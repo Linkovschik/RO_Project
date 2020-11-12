@@ -31,6 +31,7 @@ namespace RO_Project {
 
             InitializeComponent();
             imageSaver = new MyImageSaver();
+            Console.WriteLine("Test gitHub");
         }
 
         //выбрать из проводника изображение для распознавания
@@ -79,7 +80,7 @@ namespace RO_Project {
 
                     recognizer.RecognizeSymbol(symbol);
 
-                    recognitionResultTextbox.Text = recognizer.;
+                    recognitionResultTextbox.Text = "";
                     count += 1;
                 }
                         //

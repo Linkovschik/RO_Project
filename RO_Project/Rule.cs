@@ -44,7 +44,7 @@ namespace RO_Project {
         }
 
         public int Update(Symbol symbol) {
-
+            return 1;
             
         }
 
