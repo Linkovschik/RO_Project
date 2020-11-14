@@ -1,106 +1,122 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RO_Project {
-    class MyTextRecognizer {
+namespace RO_Project
+{
+   
 
-        //список с матрицами(эталонами) для каждого символа
-        List<Symbol> etalonSymbols;
-        //список правил
-        List<IRule> rules;
+    class MyEtalonRecognizer
+    {
 
-        private string etalonArraysTxtPath;
-        private string rulesDirectoryPath;
+        private string etalonTxtPath;
+        private string pngPath;
+        public MyEtalonRecognizer(string _pngPath, string _etalonTxtPath)
+        {
 
-        //результат распознавания
-        private string recognitionResult;
-
-        //конструктор
-        public MyTextRecognizer(string _etalonArraysTxtPath, string _rulesDirectoryPath) {
-
-            etalonArraysTxtPath = _etalonArraysTxtPath;
-            rulesDirectoryPath = _rulesDirectoryPath;
-            
-            etalonSymbols = ReadEtalons(etalonArraysTxtPath);
-            rules = ReadRules(rulesDirectoryPath);
-
-            recognitionResult = "";
+            pngPath = _pngPath;
+            etalonTxtPath = _etalonTxtPath;
         }
-
        
-
-        //начать распознавние
-        public void Start(BinarizedImage binarizedImageToRecognize)
+        private List<Rectangle> GetSymbolsBoundaries(BinarizedImage binarizedImage)
         {
-            string result = "";
-            List<Symbol> symbols = GetSymbols(binarizedImageToRecognize);
-            
-            foreach (Symbol symbol in symbols)
+
+            List<Rectangle> symbolsBoundaries = new List<Rectangle>();
+
+            byte[,] imageArray = binarizedImage.GetArray();
+            int N = binarizedImage.GetWidth();
+            int M = binarizedImage.GetHeight();
+
+            //первый разделитель в промежтуке
+            bool previousOnlyWhite = false;
+
+            int Left = -1, Right = -1, Top = -1, Bottom = -1, Counter = 0;
+
+            for (int i = 0; i < N; ++i)
             {
-                result += RecognizeSymbol(symbol);
-            }
-            recognitionResult += result;
-        }
 
-        //получить результат
-        public string GetResult()
-        {
-            return recognitionResult;
-        }
+                bool currentOnlyWhite = true;
 
-        //очистить результат
-        public void ClearResult()
-        {
-            recognitionResult = "";
-        }
-
-        //считать эталоны
-        private List<Symbol> ReadEtalons(string etalonArraysTxtPath)
-        {
-            etalonSymbols = new List<Symbol>();
-            string[] directories = Directory.GetDirectories(etalonArraysTxtPath);
-            foreach (string directory in directories)
-            {
-                string[] files = Directory.GetFiles(directory);
-                foreach (string filePath in files)
+                for (int j = 0; j < M; ++j)
                 {
-                    byte[,] array = MyArraySerializer.DeserializeArray(new StreamReader(filePath));
-                    etalonSymbols.Add(new Symbol(array, Path.GetFileName(filePath).Replace(".txt", "")));
-                    Console.WriteLine(filePath);
+
+                    currentOnlyWhite &= imageArray[i, j] == 0;
                 }
-            }
-            return etalonSymbols;
-        }
+                //переход с белого на чёрный
+                if (currentOnlyWhite == false)
+                {
 
-        //считать
-        private List<IRule> ReadRules(string rulesDirectoryPath) {
+                    /*if (i == 0 || i == N - 1) {
+                        resultDivivderIndexes.Add(i);
+                    }*/
+                    if (previousOnlyWhite == true)
+                    {
+                        Counter += 1;
+                        Left = i - 1;
+                    }
+                }
+                //переход с чёрного на белый
+                else
+                {
+                    //если первый столбец пикселей белый, значит мы не нашли изображение... пропускаем этот столбец
+                    if (previousOnlyWhite == false && i != 0)
+                    {
+                        Counter += 1;
+                        Right = i;
+                    }
+                }
+                previousOnlyWhite = currentOnlyWhite;
 
-            string[] directories = Directory.GetDirectories(rulesDirectoryPath);
-            rules = new List<IRule>();
-            foreach (string directory in directories) {
+                if (Counter == 2)
+                {
 
-                switch (Path.GetDirectoryName(directory)) {
-                    case "Trigonom":
-                        string[] files = Directory.GetFiles(directory);
-                        foreach (string filePath in files) {
 
-                            TrigonomRule trigonomRule = new TrigonomRule(filePath);
-                            rules.Add(trigonomRule);
-                            Console.WriteLine("rule: "+ filePath);
+
+                    Top = binarizedImage.GetHeight();
+                    Bottom = -1;
+
+                    for (int k = Left; k <= Right; ++k)
+                    {
+
+                        for (int l = 0; l < binarizedImage.GetHeight(); ++l)
+                        {
+
+                            if (imageArray[k, l] == 1)
+                            {
+                                if (Top > l)
+                                    Top = l;
+                                if (Bottom < l)
+                                    Bottom = l;
+                            }
                         }
-                        break;
+                    }
+
+                    Counter = 0;
+
+                    Console.WriteLine("l: " + Left + ", \tr: " + Right + ", \tt: " + Top + ", \tb: " + Bottom);
+
+                    symbolsBoundaries.Add(new Rectangle(Left, Top - 1, Right - Left + 1, Bottom - Top + 2));
                 }
             }
-            return rules;
+
+            return symbolsBoundaries;
+        }
+        public  List<BinarizedImage> GetBinarizedImages(BinarizedImage binarizedImage)
+        {
+            List<BinarizedImage> segmantationResult = new List<BinarizedImage>();
+            List<Rectangle> symbolsBoundaries = GetSymbolsBoundaries(binarizedImage);
+            foreach (var rect in symbolsBoundaries)
+            {
+                segmantationResult.Add(new BinarizedImage(binarizedImage, rect.Left, rect.Right, rect.Top, rect.Bottom));
+            }
+            return segmantationResult;
         }
 
-        //создать матрицу 16*16 для картинки с конкретным символом
-        private byte[,] CreateMatrix_16X16(BinarizedImage binarizedImage) {
+        public static byte[,] CreateMatrix_16X16(BinarizedImage binarizedImage)
+        {
 
             int N = binarizedImage.GetWidth();
             int M = binarizedImage.GetHeight();
@@ -117,11 +133,14 @@ namespace RO_Project {
             int yTop = -1;
 
             //цикл по вертикали(y)
-            for (int j = 0; j < M; j++) {
+            for (int j = 0; j < M; j++)
+            {
                 //цикл по горизонтали(x)
-                for (int i = 0; i < N; i++) {
+                for (int i = 0; i < N; i++)
+                {
                     //встретился черный пиксель - верхняя граница найдена
-                    if (binarizedImageArray[i, j] == 1) {
+                    if (binarizedImageArray[i, j] == 1)
+                    {
                         yTop = j;
                         break;
                     }
@@ -137,11 +156,14 @@ namespace RO_Project {
             int yBottom = -1;
 
             //цикл по вертикали(y)
-            for (int j = M - 1; j >= 0; j--) {
+            for (int j = M - 1; j >= 0; j--)
+            {
                 //цикл по горизонтали(x)
-                for (int i = 0; i < N; i++) {
+                for (int i = 0; i < N; i++)
+                {
                     //встретился черный пиксель - нижняя граница найдена
-                    if (binarizedImageArray[i, j] == 1) {
+                    if (binarizedImageArray[i, j] == 1)
+                    {
                         yBottom = j + 1;
                         break;
                     }
@@ -157,11 +179,14 @@ namespace RO_Project {
             int xLeft = -1;
 
             //цикл по горизонтали(x)
-            for (int i = 0; i < N; i++) {
+            for (int i = 0; i < N; i++)
+            {
                 //цикл по вертикали(y)
-                for (int j = 0; j < M; j++) {
+                for (int j = 0; j < M; j++)
+                {
                     //встретился черный пиксель - левая граница найдена
-                    if (binarizedImageArray[i, j] == 1) {
+                    if (binarizedImageArray[i, j] == 1)
+                    {
                         xLeft = i;
                         break;
                     }
@@ -177,11 +202,14 @@ namespace RO_Project {
             int xRight = -1;
 
             //цикл по горизонтали(x)
-            for (int i = N - 1; i >= 0; i--) {
+            for (int i = N - 1; i >= 0; i--)
+            {
                 //цикл по вертикали(y)
-                for (int j = 0; j < M; j++) {
+                for (int j = 0; j < M; j++)
+                {
                     //встретился черный пиксель - правая граница найдена
-                    if (binarizedImageArray[i, j] == 1) {
+                    if (binarizedImageArray[i, j] == 1)
+                    {
                         xRight = i + 1;
                         break;
                     }
@@ -195,7 +223,8 @@ namespace RO_Project {
             //==========================================================
 
             //границы символа не найденв => ничего не нарисовано
-            if (((yBottom - yTop) * (xRight - xLeft)) == 0) {
+            if (((yBottom - yTop) * (xRight - xLeft)) == 0)
+            {
                 Console.WriteLine("EtalonCreator: image has no symbol to bound it");
                 return null;
             }
@@ -277,8 +306,10 @@ namespace RO_Project {
             // пробегаемся по ячейкам уже
             // в абсолютных координатах
             // считаем кол-во значимых пикселей (=0 -> черный цвет)
-            for (int kj = 0; kj < 16; kj++) {
-                for (int ki = 0; ki < 16; ki++) {
+            for (int kj = 0; kj < 16; kj++)
+            {
+                for (int ki = 0; ki < 16; ki++)
+                {
 
                     nSymbol = 0;
                     for (int j = yTop + XY[kj, 1]; j <= yTop + XY[kj + 1, 1]; j++)
@@ -287,7 +318,7 @@ namespace RO_Project {
                                 nSymbol += 1;
 
                     // если отношение кол-ва знач. пикселей к общему кол-ву в ящейке > характерного процента заполнения то = 1 иначе = 0
-                    if (nSymbol / Math.Max(1, ((XY[ki + 1, 0] - XY[ki, 0]) * (XY[kj + 1, 1] - XY[kj, 1]))) > percent) 
+                    if (nSymbol / Math.Max(1, ((XY[ki + 1, 0] - XY[ki, 0]) * (XY[kj + 1, 1] - XY[kj, 1]))) > percent)
                         result[kj, ki] = 1;
                     else
                         result[kj, ki] = 0;
@@ -295,119 +326,6 @@ namespace RO_Project {
             }
             //==========================================================
 
-            return result;
-        }
-
-        //получить границы символов на изображении с множеством символов
-        private List<Rectangle> GetSymbolsBoundaries(BinarizedImage binarizedImage) {
-
-            List<Rectangle> symbolsBoundaries = new List<Rectangle>();
-
-            byte[,] imageArray = binarizedImage.GetArray();
-            int N = binarizedImage.GetWidth();
-            int M = binarizedImage.GetHeight();
-
-            //первый разделитель в промежтуке
-            bool previousOnlyWhite = false;
-
-            int Left = -1, Right = -1, Top = -1, Bottom =-1, Counter = 0; 
-
-            for (int i = 0; i < N; ++i) {
-
-                bool currentOnlyWhite = true;
-
-                for (int j = 0; j < M; ++j) {
-
-                    currentOnlyWhite &= imageArray[i, j] == 0;
-                }
-                //переход с белого на чёрный
-                if (currentOnlyWhite == false) {
-
-                    /*if (i == 0 || i == N - 1) {
-                        resultDivivderIndexes.Add(i);
-                    }*/
-                    if (previousOnlyWhite == true) {
-                        Counter += 1;
-                        Left = i - 1;
-                    }
-                }
-                //переход с чёрного на белый
-                else {
-                    //если первый столбец пикселей белый, значит мы не нашли изображение... пропускаем этот столбец
-                    if (previousOnlyWhite == false && i != 0) {
-                        Counter += 1;
-                        Right = i;
-                    }
-                }
-                previousOnlyWhite = currentOnlyWhite;
-
-                if (Counter == 2) {
-
-                    
-
-                    Top = binarizedImage.GetHeight();
-                    Bottom = -1;
-
-                    for (int k = Left; k <= Right; ++k) {
-
-                        for (int l = 0; l < binarizedImage.GetHeight(); ++l) {
-
-                            if (imageArray[k, l] == 1) {
-                                if (Top > l)
-                                    Top = l;
-                                if (Bottom < l)
-                                    Bottom = l;
-                            }
-                        }
-                    }
-
-                    Counter = 0;
-
-                    Console.WriteLine("l: "+Left+", \tr: "+Right+", \tt: "+Top+", \tb: "+Bottom);
-
-                    symbolsBoundaries.Add(new Rectangle(Left, Top - 1, Right - Left + 1, Bottom - Top + 2));
-                }
-            }
-
-            return symbolsBoundaries;
-        }
-
-        //получить список символов на картинке
-        private List<Symbol> GetSymbols(BinarizedImage binarizedImage) {
-
-            List<Symbol> symbols = new List<Symbol>();
-
-            List<Rectangle> symbolsBoundaries = GetSymbolsBoundaries(binarizedImage);
-
-            foreach(Rectangle rect in symbolsBoundaries) {
-
-                //Console.WriteLine("DividerX: "+dividerX.Item1+", "+dividerX.Item2);
-                //Console.WriteLine("DividerY: " + dividerY.Item1 + ", " + dividerY.Item2);
-
-                BinarizedImage image = new BinarizedImage(binarizedImage, rect.Left, rect.Right-1, rect.Top, rect.Bottom);
-
-                Symbol symbol = new Symbol(rect.Left, rect.Top, rect.Width, rect.Height, CreateMatrix_16X16(image));
-
-                symbols.Add(symbol);
-            }
-
-            return symbols;
-        }
-
-        private string RecognizeSymbol(Symbol symbol)
-        {
-            //минимальное отклонение от эталона
-            int minDelta = int.MaxValue;
-            string result = "";
-            foreach (Symbol etalonSymbol in etalonSymbols)
-            {
-                int delta = etalonSymbol.GetDelta(symbol);
-                if (delta < minDelta)
-                {
-                    minDelta = delta;
-                    result = etalonSymbol.Mark;
-                }
-            }
             return result;
         }
     }

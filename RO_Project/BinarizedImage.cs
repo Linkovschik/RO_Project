@@ -46,6 +46,11 @@ namespace RO_Project {
 
         public BinarizedImage(BinarizedImage image, int xLeft, int xRight, int yTop, int yBottom) {
 
+            if (image == null)
+            {
+                Console.WriteLine("BinarizedImage: image was null");
+                return;
+            }
             N = xRight - xLeft + 1;
             M = yBottom - yTop + 1;
 

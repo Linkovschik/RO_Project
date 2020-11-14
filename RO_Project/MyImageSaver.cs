@@ -14,18 +14,20 @@ namespace RO_Project {
         EncoderParameters myEncoderParameters;
         ImageCodecInfo myImageCodecInfo;
 
+        private string pngPath;
         //конструктор
-        public MyImageSaver() {
+        public MyImageSaver(string _pngPath) {
 
             myEncoder = System.Drawing.Imaging.Encoder.Quality;
             myImageCodecInfo = GetEncoderInfo("image/png");
             myEncoderParameters = new EncoderParameters(1);
+            pngPath = _pngPath;
         }
 
         public void Save(Bitmap image, string name) {
             myEncoderParameter = new EncoderParameter(myEncoder, 75L);
             myEncoderParameters.Param[0] = myEncoderParameter;
-            image.Save(Form1.pngPath + name + ".png", myImageCodecInfo, myEncoderParameters);
+            image.Save(pngPath + name + ".png", myImageCodecInfo, myEncoderParameters);
         }
 
         private static ImageCodecInfo GetEncoderInfo(String mimeType) {

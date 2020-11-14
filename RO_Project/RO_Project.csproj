@@ -88,6 +88,7 @@
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
     <Compile Include="MyArraySerializer.cs" />
+    <Compile Include="MyEtalonRecognizer.cs" />
     <Compile Include="MyImageSaver.cs" />
     <Compile Include="MyTextRecognizer.cs" />
     <Compile Include="Program.cs" />
