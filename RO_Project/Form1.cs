@@ -91,9 +91,7 @@ namespace RO_Project {
             }
         }
 
-        //МЕТОДЫ, ИСПОЛЬЗУЕМЫЕ ДЛЯ СОЗДАНИЯ ЭТАЛОНОВ
-        //----------------------------------------------------------------
-        //получить txt файлы для картинок с конкретными символами в папке 
+        //получить txt файлы для картинок с конкретными символами в папке
         private void CreateEtalonMatrix(object sender, EventArgs e) {
 
             //настроика диалога
@@ -125,11 +123,9 @@ namespace RO_Project {
             }
         }
 
-        //вычленить конкретные символы на выбранной(из проводника) картинке
-        //и получить их в виде отдельных картинок
+        //вычленить конкретные символы на выбранной(из проводника) картинке и получить их в виде отдельных картинок
         private void CreateEtalonImages(object sender, EventArgs e) {
-
-            //настроика диалога
+            //настройка диалога
             openFileDialog.InitialDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
             openFileDialog.Filter = "png files (*.png)|*.png|All files (*.*)|*.*";
             openFileDialog.FilterIndex = 2;

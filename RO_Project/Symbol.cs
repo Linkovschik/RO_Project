@@ -13,7 +13,7 @@ namespace RO_Project {
 
         Rectangle rectangle;
 
-        public string Mark { get; set; }
+        public string Mark { get; private set; }
 
         //конструктор
         public Symbol(int Left, int Top, int Width, int Height, byte[,] _array) {
@@ -27,6 +27,11 @@ namespace RO_Project {
             rectangle = new Rectangle(0, 0, 0, 0);
             array = new byte[_array.GetLength(0), _array.GetLength(1)];
             Array.Copy(_array, array, _array.Length);
+            Mark = _mark;
+        }
+
+        public void SetMark(string _mark)
+        {
             Mark = _mark;
         }
 

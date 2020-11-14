@@ -26,24 +26,105 @@ namespace RO_Project {
             etalonArraysTxtPath = _etalonArraysTxtPath;
             rulesDirectoryPath = _rulesDirectoryPath;
             
-            etalonSymbols = ReadEtalons(etalonArraysTxtPath);
-            rules = ReadRules(rulesDirectoryPath);
+            ReadEtalons(etalonArraysTxtPath);
+            ReadRules(rulesDirectoryPath);
 
             recognitionResult = "";
         }
-
-       
 
         //начать распознавние
         public void Start(BinarizedImage binarizedImageToRecognize)
         {
             string result = "";
+            //получили все символы
             List<Symbol> symbols = GetSymbols(binarizedImageToRecognize);
-            
+
+            //теперь присвоим всем символам их "метки"
             foreach (Symbol symbol in symbols)
             {
-                result += RecognizeSymbol(symbol);
+                RecognizeSymbol(symbol);
             }
+
+            //и, наконец, приступим к обработке по правилам:
+
+            //составили массив: i-ый элемент которого содержит r -номер правила, на котором остановился этот i-ый символ, изначально массив инициализирован 0-ми
+            int[] indexCorrelation = new int[symbols.Count];
+            //активное правило - правило, которое сейчас пытается "собраться"
+            IRule activeRule = null;
+            //lastSavedSymbolIndex - индекс первого "обработанного не по правилу символа"
+            int lastSavedSymbolIndex = 0;
+
+            for (int currentSymbolIndex = 0; currentSymbolIndex < symbols.Count; ++currentSymbolIndex)
+            {
+                bool oneSymbolCase = false;
+                if (activeRule == null)
+                {
+                    for (int currentRuleIndex = indexCorrelation[currentSymbolIndex]; currentRuleIndex < rules.Count; ++currentRuleIndex)
+                    {
+                       
+                        int updateResult = rules[currentRuleIndex].Update(symbols[currentSymbolIndex]);
+                        switch (updateResult)
+                        {
+                            //если нет никаких правил с этим символом
+                            case (int)IRule.Result.NotBelong:
+                                indexCorrelation[currentSymbolIndex] += 1;
+                                break;
+                            case (int)IRule.Result.Belong:
+                                //запишем ссылку на активное правило
+                                activeRule = rules[currentRuleIndex];
+                                //сохраним индекс места, куда нужно будет вернуться в случае неудачи (на 1 символ раньше, поскольку всё равно в цикле перешагнём к следующему) 
+                                lastSavedSymbolIndex = currentSymbolIndex - 1;
+                                //сохраним индекс правила, к которму вернёмся для этого символа в случае неудачи
+                                indexCorrelation[currentSymbolIndex] = currentRuleIndex + 1;
+                                break;
+                            //случай когда  в функции 1 символ - маловероятен, но, если его допустить, то нужно сразу дать ответ и идти дальше
+                            case (int)IRule.Result.End:
+                                activeRule = rules[currentRuleIndex];
+                                //раз символ один, значит и правило выполнилось, вернём тогда результат, чтобы записать
+                                result += activeRule.GetMeaning()+" ";
+                                activeRule = null;
+                                oneSymbolCase = true;
+                                break;
+
+
+                        }
+                        //если нашлось правило, то будем идти по нему, другие нам не нужны, т.е. покидаем цикл по правилам
+                        if (activeRule != null || oneSymbolCase)
+                            break;
+                    }
+
+                }
+                //сюда прихожу только тогда, когда нашлось активное правило
+                else
+                {
+                    int updateResult = activeRule.Update(symbols[currentSymbolIndex]);
+                    switch (updateResult)
+                    {
+                        //и вот она, неудача, неполучилось распознать функцию
+                        case (int)IRule.Result.NotBelong:
+                            //откатываем индекс текущего символа на начало функции (шли по cat, подбирали cos, в итоге после 'c' откатываемся к 'c' снова, но на
+                            //сей раз по правилам перешагиваем cos благодаря indexCorrelation
+                            currentSymbolIndex = lastSavedSymbolIndex;
+                            activeRule = null;
+                            break;
+                        case (int)IRule.Result.Belong:
+                            //тут как бы ничего не делаем, поскольку просто прошагиваем очередной символ в функции (шли по cat, прошли 'c', 'a,' и идём дальше... (всё делается в update())
+                            break;
+                        //если мы дошли до конца актиивного правила, то нужно активное правило "сбросить", а в результат добавить его интерпретацию
+                        case (int)IRule.Result.End:
+                            result += activeRule.GetMeaning() +" ";
+                            activeRule = null;
+                            break;
+
+                    }
+                }
+
+                //если я прошёл последнее правило и ни одно не сработало, то мне надо вывести свою метку
+                //выводим метку
+                if (indexCorrelation[currentSymbolIndex]== rules.Count)
+                    result += symbols[currentSymbolIndex].Mark +" ";
+            }
+            
             recognitionResult += result;
         }
 
@@ -60,7 +141,7 @@ namespace RO_Project {
         }
 
         //считать эталоны
-        private List<Symbol> ReadEtalons(string etalonArraysTxtPath)
+        private void ReadEtalons(string etalonArraysTxtPath)
         {
             etalonSymbols = new List<Symbol>();
             string[] directories = Directory.GetDirectories(etalonArraysTxtPath);
@@ -74,17 +155,17 @@ namespace RO_Project {
                     Console.WriteLine(filePath);
                 }
             }
-            return etalonSymbols;
+            this.etalonSymbols = etalonSymbols;
         }
 
         //считать
-        private List<IRule> ReadRules(string rulesDirectoryPath) {
+        private void ReadRules(string rulesDirectoryPath) {
 
             string[] directories = Directory.GetDirectories(rulesDirectoryPath);
             rules = new List<IRule>();
             foreach (string directory in directories) {
 
-                switch (Path.GetDirectoryName(directory)) {
+                switch (Path.GetFileName(directory)) {
                     case "Trigonom":
                         string[] files = Directory.GetFiles(directory);
                         foreach (string filePath in files) {
@@ -96,7 +177,7 @@ namespace RO_Project {
                         break;
                 }
             }
-            return rules;
+            this.rules = rules;
         }
 
         //создать матрицу 16*16 для картинки с конкретным символом
@@ -394,7 +475,7 @@ namespace RO_Project {
             return symbols;
         }
 
-        private string RecognizeSymbol(Symbol symbol)
+        private void RecognizeSymbol(Symbol symbol)
         {
             //минимальное отклонение от эталона
             int minDelta = int.MaxValue;
@@ -408,7 +489,7 @@ namespace RO_Project {
                     result = etalonSymbol.Mark;
                 }
             }
-            return result;
+            symbol.SetMark(result);
         }
     }
 }
