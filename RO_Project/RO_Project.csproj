@@ -79,7 +79,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BinarizedImage.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -87,7 +86,6 @@
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
     <Compile Include="MyArraySerializer.cs" />
-    <Compile Include="MyEtalonRecognizer.cs" />
     <Compile Include="MyImageSaver.cs" />
     <Compile Include="MyTextRecognizer.cs" />
     <Compile Include="Program.cs" />

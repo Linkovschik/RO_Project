@@ -16,16 +16,46 @@ namespace RO_Project {
         public string Mark { get; private set; }
 
         //конструктор
-        public Symbol(int Left, int Top, int Width, int Height, byte[,] _array) {
-
-            rectangle = new Rectangle(Left, Top, Width, Height);
+        public Symbol(Rectangle _rect, byte[,] _array) {
+            rectangle = new Rectangle(_rect.Left, _rect.Top, _rect.Width, _rect.Height);
             array = new byte[_array.GetLength(0), _array.GetLength(1)];
             Array.Copy(_array, array, _array.Length);
         }
 
-        public Symbol(byte[,] _array, string _mark) {
-            rectangle = new Rectangle(0, 0, 0, 0);
-            array = new byte[_array.GetLength(0), _array.GetLength(1)];
+        public void SetMark(string _mark)
+        {
+            Mark = _mark;
+        }
+
+        public double GetDelta(EtalonSymbol etalon) {
+
+            double delta = 0;
+
+            for (int j = 0; j < array.GetLength(0); j++)
+                for (int i = 0; i < array.GetLength(1); i++)
+                    delta += Math.Abs(array[j, i] - etalon.array[j, i]);
+
+            return delta;
+        }
+
+       public void Print() {
+            for (int i = 0; i < array.GetLength(0); i++) {
+                for (int j = 0; j < array.GetLength(1); j++)
+                    Console.Write(array[i, j] + " ");
+                Console.WriteLine();
+            }
+        }
+    }
+
+    public class EtalonSymbol
+    {
+        //биткарта, сооьтветствующая символу
+        public double[,] array;
+        public string Mark { get; private set; }
+
+        public EtalonSymbol(double[,] _array, string _mark)
+        {
+            array = new double[_array.GetLength(0), _array.GetLength(1)];
             Array.Copy(_array, array, _array.Length);
             Mark = _mark;
         }
@@ -35,19 +65,10 @@ namespace RO_Project {
             Mark = _mark;
         }
 
-        public int GetDelta(Symbol etalon) {
-
-            int delta = 0;
-
-            for (int j = 0; j < array.GetLength(0); j++)
-                for (int i = 0; i < array.GetLength(1); i++)
-                    delta += (byte)(array[j, i] ^ etalon.array[j, i]);
-
-            return delta;
-        }
-
-       public void Print() {
-            for (int i = 0; i < array.GetLength(0); i++) {
+        public void Print()
+        {
+            for (int i = 0; i < array.GetLength(0); i++)
+            {
                 for (int j = 0; j < array.GetLength(1); j++)
                     Console.Write(array[i, j] + " ");
                 Console.WriteLine();

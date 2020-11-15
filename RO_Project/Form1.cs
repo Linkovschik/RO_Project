@@ -32,8 +32,6 @@ namespace RO_Project {
         //объект - распознаватель
         MyTextRecognizer recognizer;
 
-        //объект-распознаватель эталонов
-        MyEtalonRecognizer etalonRecognizer;
 
         //конструктор формы
         public Form1() {
@@ -77,14 +75,11 @@ namespace RO_Project {
                 //считываем изображение из файла
                 System.Drawing.Bitmap image = new Bitmap(filePath);
 
-                //бинаризация изображения
-                BinarizedImage binarizedImage = new BinarizedImage(image);
-
                 //инициирую объект-распознаватель. Из него потом полочу результат
                 recognizer = new MyTextRecognizer(txtPath, rulesPath);
 
                 //начинаю распознавание
-                recognizer.Start(binarizedImage);
+                recognizer.Start(image);
 
                 //результат распознавания. Получаю из объекта-распознавателя
                 recognitionResultTextbox.Text = recognizer.GetResult();
@@ -101,28 +96,58 @@ namespace RO_Project {
 
             if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(folderBrowserDialog.SelectedPath)) {
 
-                string[] files = Directory.GetFiles(folderBrowserDialog.SelectedPath);
+                string[] symbolTypeDirectories = Directory.GetDirectories(folderBrowserDialog.SelectedPath);
+                foreach(var symbolTypeDirectory in symbolTypeDirectories)
+                {
+                    string symbolTypeDirectoryName = Path.GetFileName(symbolTypeDirectory);
+                    string[] directories = Directory.GetDirectories(symbolTypeDirectory);
+                    foreach (var directory in directories)
+                    {
+                        //имя директории - имя символа, т.е. каждому символу своя директория
+                        string directoryName = Path.GetFileName(directory);
+                        //нужно получить список эталоных матриц 16x16 одного символа
+                        List<double[,]> etalonsArrays = new List<double[,]>();
+                        //по всем вариантам эталона данного символа проходимся...
+                        string[] files = Directory.GetFiles(directory);
+                        foreach (string file in files)
+                        {
+                            //считываем изображение из файла
+                            System.Drawing.Bitmap image = new Bitmap(file);
 
-                foreach (string file in files) {
-
-                    //считываем изображение из файла
-                    System.Drawing.Bitmap image = new Bitmap(file);
-
-                    //произведем бинаризацию изображения
-                    BinarizedImage binarizedImage = new BinarizedImage(image);
-                    
-                    //матрица эталонная для символа
-                    byte[,] etalonArray = MyEtalonRecognizer.CreateMatrix_16X16(binarizedImage);
-
-                    string fileName = Path.GetFileName(file);
-
-                    fileName = fileName.Replace(".png","");
-
-                    MyArraySerializer.SerializeArray(etalonArray, new StreamWriter(txtPath+"\\"+fileName + ".txt"));
+                            //матрица эталонная для символа
+                            etalonsArrays.Add(MyTextRecognizer.CreateDoubleMatrix_16X16(image));
+                        }
+                        Directory.CreateDirectory(txtPath + "\\" + symbolTypeDirectoryName);
+                        MyArraySerializer.SerializeDoubleArray(SumByteArrays(etalonsArrays), new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"));
+                    }
                 }
+               
             }
         }
+        //функция для суммирования матриц эталонных изображений одного символа (используется только для этого пока что)
+        private double[,] SumByteArrays(List<double[,]> arrays)
+        {
+            double[,] result = new double[arrays[0].GetLength(0), arrays[0].GetLength(1)];
 
+            //записываем сумму в результат
+            foreach (var array in arrays)
+            {
+                for (int i = 0; i < array.GetLength(0); ++i)
+                    for (int j = 0; j < array.GetLength(1); ++j)
+                    {
+                        result[i, j] += array[i, j];
+                    }
+            }
+
+            //делим на количество
+            for (int i = 0; i < result.GetLength(0); ++i)
+                for (int j = 0; j < result.GetLength(1); ++j)
+                {
+                    result[i, j] /= (double)arrays.Count;
+                }
+
+            return result;
+        }
         //вычленить конкретные символы на выбранной(из проводника) картинке и получить их в виде отдельных картинок
         private void CreateEtalonImages(object sender, EventArgs e) {
             //настройка диалога
@@ -139,24 +164,20 @@ namespace RO_Project {
                 //считываем изображение из файла
                 System.Drawing.Bitmap image = new Bitmap(filePath);
 
-                //бинаризация изображения
-                BinarizedImage binarizedImage = new BinarizedImage(image);
-
-                etalonRecognizer = new MyEtalonRecognizer(pngPath, txtPath);
-
                 //сегментация картинки
-                List<BinarizedImage> images = etalonRecognizer.GetBinarizedImages(binarizedImage);
-
+                List<Bitmap> bitmaps = MyTextRecognizer.GetImageBitmaps(image);
 
                 int count = 0;
-                foreach (BinarizedImage symbolImage in images) {
+                foreach (Bitmap bitmap in bitmaps) {
 
-                    imageSaver.Save(symbolImage.GetBitmap(), "symbol" + count);
+                    imageSaver.Save(bitmap, "symbol" + count);
 
                     count += 1;
                 }
             }
             
         }
+
+        
     }
 }
