@@ -48,8 +48,7 @@ namespace RO_Project {
                 Directory.CreateDirectory(txtPath);
                 Directory.CreateDirectory(rulesPath);
                 imageSaver = new MyImageSaver(pngPath);
-                //инициирую объект-распознаватель. Из него потом полочу результат
-                recognizer = new MyTextRecognizer(txtPath, rulesPath);
+                
             }
             catch(Exception e)
             {
@@ -75,7 +74,9 @@ namespace RO_Project {
 
                 //считываем изображение из файла
                 System.Drawing.Bitmap image = new Bitmap(filePath);
-                recognizer.ClearResult();
+
+                //инициирую объект-распознаватель. Из него потом полочу результат
+                recognizer = new MyTextRecognizer(txtPath, rulesPath);
 
                 //начинаю распознавание
                 recognizer.Start(image);
@@ -114,20 +115,10 @@ namespace RO_Project {
                             System.Drawing.Bitmap image = new Bitmap(file);
 
                             //матрица эталонная для символа
-                            var temp = recognizer.CreateDoubleMatrix_16X16(image);
-                            etalonsArrays.Add(temp);
-                            for (int i = 0; i < temp.GetLength(0); ++i)
-                            {
-                                for (int j = 0; j < temp.GetLength(1); ++j)
-                                {
-                                    
-                                    Console.Write(temp[i, j] + " ");
-                                }
-                                Console.Write("\n");
-                            }
+                            etalonsArrays.Add(MyTextRecognizer.CreateDoubleMatrix_16X16(image));
                         }
                         Directory.CreateDirectory(txtPath + "\\" + symbolTypeDirectoryName);
-                        MyArraySerializer.SerializeDoubleArray(SumByteArrays(etalonsArrays), recognizer.ResizeWidth, recognizer.ResizeHeight, new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"));
+                        MyArraySerializer.SerializeDoubleArray(SumByteArrays(etalonsArrays), new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"));
                     }
                 }
                
@@ -141,17 +132,11 @@ namespace RO_Project {
             //записываем сумму в результат
             foreach (var array in arrays)
             {
-
                 for (int i = 0; i < array.GetLength(0); ++i)
-                {
                     for (int j = 0; j < array.GetLength(1); ++j)
                     {
                         result[i, j] += array[i, j];
-                        //Console.Write(array[i, j] + " ");
                     }
-                    //Console.Write("\n");
-                }
-                    
             }
 
             //делим на количество
@@ -180,12 +165,12 @@ namespace RO_Project {
                 System.Drawing.Bitmap image = new Bitmap(filePath);
 
                 //сегментация картинки
-                List<Symbol> symbols = recognizer.GetSymbols(image);
+                List<Bitmap> bitmaps = MyTextRecognizer.GetImageBitmaps(image);
 
                 int count = 0;
-                foreach (Symbol symbol in symbols) {
+                foreach (Bitmap bitmap in bitmaps) {
 
-                    imageSaver.Save(symbol.GetBitMap(), "symbol" + count);
+                    imageSaver.Save(bitmap, "symbol" + count);
 
                     count += 1;
                 }

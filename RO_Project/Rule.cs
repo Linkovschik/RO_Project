@@ -15,10 +15,10 @@ namespace RO_Project {
         }
         public abstract int Update(Symbol symbol);
         public abstract string GetMeaning();
+        public abstract int GetLength();
     }
 
-    public class TrigonomRule : IRule
-    {
+    public class TrigonomRule : IRule {
 
         List<string> marksList;
 
@@ -77,51 +77,9 @@ namespace RO_Project {
             return meaning;
         }
 
-    }
-
-    public class IndexRule : IRule
-    {
-        string meaning;
-        private Symbol mainSymbol;
-        int currentState;
-
-        public IndexRule()
+        public override int GetLength()
         {
-            meaning = "-ый";
-            currentState = 0;
-        }
-
-
-        public override string GetMeaning()
-        {
-            return meaning;
-        }
-
-        public override int Update(Symbol symbol)
-        {
-            int result = -1;
-            if(currentState==0)
-            {
-                mainSymbol = symbol;
-                currentState += 1;
-                result = (int)Result.Belong;
-            }
-            else if(currentState==1)
-            {
-                if (mainSymbol.GetRectangle().Top + mainSymbol.GetRectangle().Height / 2 <= symbol.GetRectangle().Top)
-                {
-                    meaning = mainSymbol.Mark + " " + symbol.Mark + meaning;
-                    currentState = 0;
-                    result = (int)Result.End;
-                }
-                else
-                {
-                    currentState = 0;
-                    result = (int)Result.NotBelong;
-                }
-                     
-            }
-            return result;
+            return countSymbols;
         }
     }
 }

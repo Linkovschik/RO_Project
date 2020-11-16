@@ -9,21 +9,17 @@ namespace RO_Project {
     public class Symbol {
 
         //биткарта, сооьтветствующая символу
-        public byte[,] array;
+        byte[,] array;
 
-        //битмап
-        private Bitmap bitMap;
-
-        private Rectangle rectangle;
+        Rectangle rectangle;
 
         public string Mark { get; private set; }
 
         //конструктор
-        public Symbol(Rectangle _rect, byte[,] _array, Bitmap _bitMap) {
+        public Symbol(Rectangle _rect, byte[,] _array) {
             rectangle = new Rectangle(_rect.Left, _rect.Top, _rect.Width, _rect.Height);
             array = new byte[_array.GetLength(0), _array.GetLength(1)];
             Array.Copy(_array, array, _array.Length);
-            bitMap = _bitMap;
         }
 
         public void SetMark(string _mark)
@@ -42,23 +38,13 @@ namespace RO_Project {
             return delta;
         }
 
-        public Rectangle GetRectangle()
-        {
-            return rectangle;
-        }
-
-        public void Print() {
+       public void Print() {
             for (int i = 0; i < array.GetLength(0); i++) {
                 for (int j = 0; j < array.GetLength(1); j++)
                     Console.Write(array[i, j] + " ");
                 Console.WriteLine();
             }
         }
-
-        public Bitmap GetBitMap() {
-            return bitMap;
-        }
-        
     }
 
     public class EtalonSymbol
