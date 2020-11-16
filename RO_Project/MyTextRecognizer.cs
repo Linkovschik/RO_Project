@@ -41,9 +41,19 @@ namespace RO_Project {
             List<Symbol> symbols = GetSymbols(imageBitmap);
 
             //теперь присвоим всем символам их "метки"
+            int tempCount = 0;
             foreach (Symbol symbol in symbols)
             {
                 RecognizeSymbol(symbol);
+                tempCount += 1;
+                for (int i=0; i<symbol.array.GetLength(0) && tempCount==2; ++i)
+                {
+                    for(int j=0; j<symbol.array.GetLength(1); ++j)
+                    {
+                        Console.Write(symbol.array[i,j] + " ");
+                    }
+                    Console.Write("\n");
+                }
             }
 
             //и, наконец, приступим к обработке по правилам:
@@ -70,12 +80,15 @@ namespace RO_Project {
                             case (int)IRule.Result.NotBelong:
                                 break;
                             case (int)IRule.Result.Belong:
-                                //запишем ссылку на активное правило
-                                activeRule = rules[currentRuleIndex];
-                                //сохраним индекс места, куда нужно будет вернуться в случае неудачи (на 1 символ раньше, поскольку всё равно в цикле перешагнём к следующему) 
-                                lastSavedSymbolIndex = currentSymbolIndex - 1;
-                                //сохраним индекс правила, к которму вернёмся для этого символа в случае неудачи
-                                indexCorrelation[currentSymbolIndex] = currentRuleIndex + 1;
+                                if(currentSymbolIndex != symbols.Count-1)
+                                {
+                                    //запишем ссылку на активное правило
+                                    activeRule = rules[currentRuleIndex];
+                                    //сохраним индекс места, куда нужно будет вернуться в случае неудачи (на 1 символ раньше, поскольку всё равно в цикле перешагнём к следующему) 
+                                    lastSavedSymbolIndex = currentSymbolIndex - 1;
+                                    //сохраним индекс правила, к которму вернёмся для этого символа в случае неудачи
+                                    indexCorrelation[currentSymbolIndex] = currentRuleIndex + 1;
+                                }
                                 break;
                             //случай когда  в функции 1 символ - маловероятен, но, если его допустить, то нужно сразу дать ответ и идти дальше
                             case (int)IRule.Result.End:
@@ -113,7 +126,10 @@ namespace RO_Project {
                             activeRule = null;
                             break;
                         case (int)IRule.Result.Belong:
-                            //тут как бы ничего не делаем, поскольку просто прошагиваем очередной символ в функции (шли по cat, прошли 'c', 'a,' и идём дальше... (всё делается в update())
+                            if (currentSymbolIndex != symbols.Count - 1)
+                            {
+                                //тут как бы ничего не делаем, поскольку просто прошагиваем очередной символ в функции (шли по cat, прошли 'c', 'a,' и идём дальше... (всё делается в update())
+                            }
                             break;
                         //если мы дошли до конца актиивного правила, то нужно активное правило "сбросить", а в результат добавить его интерпретацию
                         case (int)IRule.Result.End:
@@ -150,7 +166,7 @@ namespace RO_Project {
                 string[] files = Directory.GetFiles(directory);
                 foreach (string filePath in files)
                 {
-                    double[,] array = MyArraySerializer.DeserializeDoubleArray(new StreamReader(filePath));
+                    double[,] array = MyArraySerializer.DeserializeDoubleArray(ResizeWidth, ResizeHeight, new StreamReader(filePath));
                     etalonSymbols.Add(new EtalonSymbol(array, Path.GetFileName(filePath).Replace(".txt", "")));
                     Console.WriteLine(filePath);
                 }
@@ -163,40 +179,22 @@ namespace RO_Project {
             string[] directories = Directory.GetDirectories(rulesDirectoryPath);
             rules = new List<IRule>();
             foreach (string directory in directories) {
-
-                switch (Path.GetFileName(directory)) {
-                    case "Trigonom":
-                        string[] files = Directory.GetFiles(directory);
-                        foreach (string filePath in files) {
-
+                string[] files = Directory.GetFiles(directory);
+                foreach (string filePath in files)
+                {
+                    switch (Path.GetFileName(directory))
+                    {
+                        case "Trigonom":
                             TrigonomRule trigonomRule = new TrigonomRule(filePath);
                             rules.Add(trigonomRule);
-                            Console.WriteLine("rule: "+ filePath);
-                        }
-                        break;
+                            break;
+                    }
+                    Console.WriteLine("rule: " + filePath);
                 }
             }
+            rules.Add(new IndexRule());
         }
-
-        //получить границы символов на изображении с множеством символов
-
-        public static List<Symbol> GetSymbols(Bitmap imageBitmap)
-        {
-
-            List<Symbol> symbols = new List<Symbol>();
-
-            List<Rectangle> symbolsBoundaries = GetSymbolsBoundaries(imageBitmap);
-
-            foreach (Rectangle rect in symbolsBoundaries)
-            {
-                Symbol symbol = new Symbol(rect, CreateByteMatrix_16X16(GetImagePart(imageBitmap,rect)));
-
-                symbols.Add(symbol);
-            }
-
-            return symbols;
-        }
-
+        
         private void RecognizeSymbol(Symbol symbol)
         {
             //минимальное отклонение от эталона
@@ -211,83 +209,16 @@ namespace RO_Project {
                     result = etalonSymbol.Mark;
                 }
             }
-            symbol.SetMark(result);
+            if(ResizeWidth * ResizeHeight / 4.0 > minDelta)
+                symbol.SetMark(result);
         }
 
-        private static bool correlation(Color currColor)
+        private bool correlation(Color currColor)
         {
             return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
         }
 
-        private static List<Rectangle> GetSymbolsBoundaries(Bitmap imageBitmap)
-        {
-            List<Rectangle> symbolsBoundaries = new List<Rectangle>();
-
-            int N = imageBitmap.Width;
-            int M = imageBitmap.Height;
-
-            //первый разделитель в промежтуке
-            bool previousOnlyWhite = false;
-            int Left = -1, Right = -1, Top = -1, Bottom = -1, Counter = 0;
-            for (int i = 0; i < N; ++i)
-            {
-                bool currentOnlyWhite = true;
-                for (int j = 0; j < M; ++j)
-                {
-                    currentOnlyWhite &= correlation(imageBitmap.GetPixel(i, j));
-                }
-                //переход с белого на чёрный
-                if (currentOnlyWhite == false)
-                {
-
-                    if (i == 0 || i == N - 1)
-                    {
-                        Counter += 1;
-                        Left = i;
-                    }
-                    if (previousOnlyWhite == true)
-                    {
-                        Counter += 1;
-                        Left = i;
-                    }
-                }
-                //переход с чёрного на белый
-                else
-                {
-                    //если первый столбец пикселей белый, значит мы не нашли изображение... пропускаем этот столбец
-                    if (previousOnlyWhite == false && i != 0)
-                    {
-                        Counter += 1;
-                        Right = i;
-                    }
-                }
-                previousOnlyWhite = currentOnlyWhite;
-                if (Counter == 2)
-                {
-                    Top = M;
-                    Bottom = -1;
-                    for (int k = Left; k <= Right; ++k)
-                    {
-                        for (int l = 0; l < M; ++l)
-                        {
-                            if (!correlation(imageBitmap.GetPixel(k, l)))
-                            {
-                                if (Top > l)
-                                    Top = l;
-                                if (Bottom < l)
-                                    Bottom = l;
-                            }
-                        }
-                    }
-                    Counter = 0;
-                    Console.WriteLine("l: " + Left + ", \tr: " + Right + ", \tt: " + Top + ", \tb: " + Bottom);
-                    symbolsBoundaries.Add(new Rectangle(Left, Top, Right - Left + 1, Bottom - Top + 1));
-                }
-            }
-            return symbolsBoundaries;
-        }
-
-        private static Bitmap BitmapResize(Bitmap image, int Width, int Height)
+        private Bitmap BitmapResize(Bitmap image, int Width, int Height)
         {
             int sourceWidth = image.Width;
             int sourceHeight = image.Height;
@@ -334,73 +265,241 @@ namespace RO_Project {
 
         }
 
-        private static Bitmap GetImagePart(Bitmap imageBitmap, Rectangle rect)
+        //запуск поиска в ширину для бнаружения границ символа
+        private Rectangle StartBFSFromPixel(Point pixel, Bitmap bitMap)
         {
-            int N = rect.Width;
-            int M = rect.Height;
 
-            Console.WriteLine("Создается биткарта размерами " + N + " x " + M);
+            //очередь посещаемых пикселей
+            Queue<Point> toVisitList = new Queue<Point>();
 
-            Bitmap partBitmap = new Bitmap(N + 1, M + 1);
+            //помещаем в очередь первый пиксель(стартовый)
+            toVisitList.Enqueue(pixel);
 
-            for (int i = rect.Left; i <= rect.Right; i++)
-                for (int j = rect.Top; j <= rect.Bottom; j++)
-                    partBitmap.SetPixel(i - rect.Left, j - rect.Top, imageBitmap.GetPixel(i, j));
+            //список посещенных пикселей
+            List<Point> visitedList = new List<Point>();
 
-            return partBitmap;
-        }
+            int left = bitMap.Width;
+            int top = bitMap.Height;
+            int right = -1;
+            int bottom = -1;
 
-        public static List<Bitmap> GetImageBitmaps(Bitmap imageBitmap)
-        {
-            List<Bitmap> segmantationResult = new List<Bitmap>();
-            List<Rectangle> symbolsBoundaries = GetSymbolsBoundaries(imageBitmap);
-            foreach (var rect in symbolsBoundaries)
+            //итерационный процесс
+            while (toVisitList.Count != 0)
             {
-                segmantationResult.Add(GetImagePart(imageBitmap, rect));
+
+                //извлекаем из очереди пиксель
+                Point current = toVisitList.Dequeue();
+
+                if (!Visited(current))
+                {
+                    visitedList.Add(current);
+                    if (current.X < left)
+                        left = current.X;
+                    if (current.X > right)
+                        right = current.X;
+                    if (current.Y < top)
+                        top = current.Y;
+                    if (current.Y > bottom)
+                        bottom = current.Y;
+                }
+                else
+                    continue;
+
+                //помещаем в Q все пикскли, смежные с current
+                //смежными являются черные пиксели во всех 8-ми напрвалениях
+                //которые еще не были посещены и находятся в пределах изображения 
+                List<Point> newPixels = new List<Point>();
+
+                newPixels.Add(new Point(current.X - 1, current.Y));
+                newPixels.Add(new Point(current.X + 1, current.Y));
+                newPixels.Add(new Point(current.X, current.Y + 1));
+                newPixels.Add(new Point(current.X, current.Y - 1));
+                newPixels.Add(new Point(current.X - 1, current.Y - 1));
+                newPixels.Add(new Point(current.X - 1, current.Y + 1));
+                newPixels.Add(new Point(current.X + 1, current.Y + 1));
+                newPixels.Add(new Point(current.X + 1, current.Y - 1));
+
+                foreach (Point newPixel in newPixels)
+                {
+                    if (newPixel.X < bitMap.Width &&
+                       newPixel.X >= 0 &&
+                       newPixel.Y < bitMap.Height &&
+                       newPixel.Y >= 0 &&
+                       !correlation(bitMap.GetPixel(newPixel.X, newPixel.Y)) &&
+                       !Visited(newPixel))
+                        toVisitList.Enqueue(newPixel);
+                }
+
             }
-            return segmantationResult;
+
+            return new Rectangle(left, top, right - left + 1, bottom - top + 1);
+
+            //локальная функция для проверки списка L на наличие рассматриваемого пикселя
+            bool Visited(Point pixelToCheck)
+            {
+
+                foreach (Point pixelFromL in visitedList)
+                    if (pixelFromL.X == pixelToCheck.X && pixelFromL.Y == pixelToCheck.Y)
+                        return true;
+
+                return false;
+            }
         }
+
+        private Bitmap GetImagePart(Point pixel, Bitmap bitMap, Rectangle rect)
+        {
+            Bitmap symbolBitmap = new Bitmap(rect.Width, rect.Height);
+            //очередь посещаемых пикселей
+            Queue<Point> toVisitList = new Queue<Point>();
+
+            //помещаем в очередь первый пиксель(стартовый)
+            toVisitList.Enqueue(pixel);
+
+            //список посещенных пикселей
+            List<Point> visitedList = new List<Point>();
+
+            //итерационный процесс
+            while (toVisitList.Count != 0)
+            {
+
+                //извлекаем из очереди пиксель
+                Point current = toVisitList.Dequeue();
+
+                if (!Visited(current))
+                {
+                    visitedList.Add(current);
+                    symbolBitmap.SetPixel(current.X-rect.Left, current.Y - rect.Top, bitMap.GetPixel(current.X, current.Y));
+                }
+                else
+                    continue;
+
+                //помещаем в Q все пикскли, смежные с current
+                //смежными являются черные пиксели во всех 8-ми напрвалениях
+                //которые еще не были посещены и находятся в пределах изображения 
+                List<Point> newPixels = new List<Point>();
+
+                newPixels.Add(new Point(current.X - 1, current.Y));
+                newPixels.Add(new Point(current.X + 1, current.Y));
+                newPixels.Add(new Point(current.X, current.Y + 1));
+                newPixels.Add(new Point(current.X, current.Y - 1));
+                newPixels.Add(new Point(current.X - 1, current.Y - 1));
+                newPixels.Add(new Point(current.X - 1, current.Y + 1));
+                newPixels.Add(new Point(current.X + 1, current.Y + 1));
+                newPixels.Add(new Point(current.X + 1, current.Y - 1));
+
+                foreach (Point newPixel in newPixels)
+                {
+                    if (newPixel.X < bitMap.Width &&
+                       newPixel.X >= 0 &&
+                       newPixel.Y < bitMap.Height &&
+                       newPixel.Y >= 0 &&
+                       !correlation(bitMap.GetPixel(newPixel.X, newPixel.Y)) &&
+                       !Visited(newPixel))
+                        toVisitList.Enqueue(newPixel);
+                }
+
+            }
+
+            return symbolBitmap;
+
+            //локальная функция для проверки списка L на наличие рассматриваемого пикселя
+            bool Visited(Point pixelToCheck)
+            {
+
+                foreach (Point pixelFromL in visitedList)
+                    if (pixelFromL.X == pixelToCheck.X && pixelFromL.Y == pixelToCheck.Y)
+                        return true;
+
+                return false;
+            }
+        }
+
+        public List<Symbol> GetSymbols(Bitmap imageBitmap)
+        {
+            List<Symbol> symbols = new List<Symbol>();
+            for(int i=0; i<imageBitmap.Width; ++i)
+            {
+                for(int j=0; j< imageBitmap.Height; ++j)
+                {
+                    Point pixel = new Point(i, j);
+                    if(!correlation(imageBitmap.GetPixel(i,j)) && !IsPixelBelongsToSymbol(symbols,pixel))
+                    {
+                        Rectangle symbolBounds = StartBFSFromPixel(pixel, imageBitmap);
+                        //Rectangle symbolBounds_1 = StartBFSFromPixel(pixel, imageBitmap);
+                        Bitmap symbolBitMap = GetImagePart(pixel, imageBitmap, symbolBounds);
+                        symbols.Add(new Symbol(symbolBounds, CreateByteMatrix_16X16(symbolBitMap), symbolBitMap));
+                        Console.WriteLine("Мы вышли");
+                    }
+                }
+            }
+            return symbols;
+        }
+
+        private bool IsPixelBelongsToSymbol(List<Symbol> symbols, Point pixel)
+        {
+            foreach (var symbol in symbols)
+            {
+                if (symbol.GetRectangle().Contains(pixel))
+                    return true;
+            }
+            return false;
+        }
+
+        public int ResizeWidth = 32;
+        public int ResizeHeight = 32;
 
         //создать матрицу 16*16 для картинки с конкретным символом
-        public static byte[,] CreateByteMatrix_16X16(Bitmap bitmap)
+        public byte[,] CreateByteMatrix_16X16(Bitmap bitmap)
         {
-            byte[,] result = new byte[16, 16];
-            Bitmap resizedBitmap = BitmapResize(bitmap, 16, 16);
+            byte[,] result = new byte[ResizeWidth, ResizeHeight];
+            Bitmap resizedBitmap = BitmapResize(bitmap, ResizeWidth, ResizeHeight);
             for(int i=0; i< resizedBitmap.Width; ++i)
                 for(int j=0; j<resizedBitmap.Height; ++j)
                 {
                     if (correlation(resizedBitmap.GetPixel(i,j)))
                     {
-                        result[i, j] = 0;
+                        result[j, i] = 0;
                     }
                     else
                     {
-                        result[i, j] = 1;
+                        result[j, i] = 1;
                     }
                 }
             return result;
 
         }
 
-        public static double[,] CreateDoubleMatrix_16X16(Bitmap bitmap)
+        public double[,] CreateDoubleMatrix_16X16(Bitmap bitmap)
         {
-            double[,] result = new double[16, 16];
-            Bitmap resizedBitmap = BitmapResize(bitmap, 16, 16);
+            double[,] result = new double[ResizeWidth, ResizeHeight];
+            Bitmap resizedBitmap;
+            if (bitmap.Width!=ResizeWidth || bitmap.Height!=ResizeHeight)
+            {
+                resizedBitmap = BitmapResize(bitmap, ResizeWidth, ResizeHeight);
+            }
+            else
+            {
+                resizedBitmap = bitmap;
+            }
+
+            
             for (int i = 0; i < resizedBitmap.Width; ++i)
                 for (int j = 0; j < resizedBitmap.Height; ++j)
                 {
                     if (correlation(resizedBitmap.GetPixel(i, j)))
                     {
-                        result[i, j] = 0;
+                        result[j, i] = 0;
                     }
                     else
                     {
-                        result[i, j] = 1;
+                        result[j, i] = 1;
                     }
                 }
             return result;
 
         }
+
+        
 
     }
 }
