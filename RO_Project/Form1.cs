@@ -49,7 +49,7 @@ namespace RO_Project {
                 Directory.CreateDirectory(rulesPath);
                 imageSaver = new MyImageSaver(pngPath);
                 //инициирую объект-распознаватель. Из него потом полочу результат
-                recognizer = new MyTextRecognizer(txtPath, rulesPath);
+                recognizer = new MyTextRecognizer(txtPath, rulesPath, 32, 32);
             }
             catch(Exception e)
             {
