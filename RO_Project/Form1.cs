@@ -114,11 +114,20 @@ namespace RO_Project {
                             //считываем изображение из файла
                             System.Drawing.Bitmap image = new Bitmap(file);
 
+                            var ar = MyTextRecognizer.CreateDoubleMatrix_16X16(image);
+                            for (int i=0; i<ar.GetLength(0);++i)
+                            {
+                                for(int j = 0; j < ar.GetLength(1); ++j)
+                                {
+                                    Console.Write(ar[i, j] + " ");
+                                }
+                                Console.Write("\n");
+                            }
                             //матрица эталонная для символа
                             etalonsArrays.Add(MyTextRecognizer.CreateDoubleMatrix_16X16(image));
                         }
                         Directory.CreateDirectory(txtPath + "\\" + symbolTypeDirectoryName);
-                        MyArraySerializer.SerializeDoubleArray(SumByteArrays(etalonsArrays), new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"));
+                        MyArraySerializer.SerializeDoubleArray(SumByteArrays(etalonsArrays), new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"), MyTextRecognizer.ResizeWidth, MyTextRecognizer.ResizeHeight);
                     }
                 }
                

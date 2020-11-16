@@ -70,12 +70,15 @@ namespace RO_Project {
                             case (int)IRule.Result.NotBelong:
                                 break;
                             case (int)IRule.Result.Belong:
-                                //запишем ссылку на активное правило
-                                activeRule = rules[currentRuleIndex];
-                                //сохраним индекс места, куда нужно будет вернуться в случае неудачи (на 1 символ раньше, поскольку всё равно в цикле перешагнём к следующему) 
-                                lastSavedSymbolIndex = currentSymbolIndex - 1;
-                                //сохраним индекс правила, к которму вернёмся для этого символа в случае неудачи
-                                indexCorrelation[currentSymbolIndex] = currentRuleIndex + 1;
+                                if(currentSymbolIndex!= symbols.Count-1)
+                                {
+                                    //запишем ссылку на активное правило
+                                    activeRule = rules[currentRuleIndex];
+                                    //сохраним индекс места, куда нужно будет вернуться в случае неудачи (на 1 символ раньше, поскольку всё равно в цикле перешагнём к следующему) 
+                                    lastSavedSymbolIndex = currentSymbolIndex - 1;
+                                    //сохраним индекс правила, к которму вернёмся для этого символа в случае неудачи
+                                    indexCorrelation[currentSymbolIndex] = currentRuleIndex + 1;
+                                }
                                 break;
                             //случай когда  в функции 1 символ - маловероятен, но, если его допустить, то нужно сразу дать ответ и идти дальше
                             case (int)IRule.Result.End:
@@ -113,7 +116,10 @@ namespace RO_Project {
                             activeRule = null;
                             break;
                         case (int)IRule.Result.Belong:
-                            //тут как бы ничего не делаем, поскольку просто прошагиваем очередной символ в функции (шли по cat, прошли 'c', 'a,' и идём дальше... (всё делается в update())
+                            if (currentSymbolIndex != symbols.Count - 1)
+                            {
+                                //тут как бы ничего не делаем, поскольку просто прошагиваем очередной символ в функции (шли по cat, прошли 'c', 'a,' и идём дальше... (всё делается в update())
+                            }
                             break;
                         //если мы дошли до конца актиивного правила, то нужно активное правило "сбросить", а в результат добавить его интерпретацию
                         case (int)IRule.Result.End:
@@ -150,7 +156,7 @@ namespace RO_Project {
                 string[] files = Directory.GetFiles(directory);
                 foreach (string filePath in files)
                 {
-                    double[,] array = MyArraySerializer.DeserializeDoubleArray(new StreamReader(filePath));
+                    double[,] array = MyArraySerializer.DeserializeDoubleArray(new StreamReader(filePath), MyTextRecognizer.ResizeWidth, MyTextRecognizer.ResizeWidth);
                     etalonSymbols.Add(new EtalonSymbol(array, Path.GetFileName(filePath).Replace(".txt", "")));
                     Console.WriteLine(filePath);
                 }
@@ -364,38 +370,42 @@ namespace RO_Project {
         //создать матрицу 16*16 для картинки с конкретным символом
         public static byte[,] CreateByteMatrix_16X16(Bitmap bitmap)
         {
-            byte[,] result = new byte[16, 16];
-            Bitmap resizedBitmap = BitmapResize(bitmap, 16, 16);
+            byte[,] result = new byte[ResizeWidth, ResizeHeight];
+            Bitmap resizedBitmap = BitmapResize(bitmap, ResizeWidth, ResizeHeight);
             for(int i=0; i< resizedBitmap.Width; ++i)
                 for(int j=0; j<resizedBitmap.Height; ++j)
                 {
                     if (correlation(resizedBitmap.GetPixel(i,j)))
                     {
-                        result[i, j] = 0;
+                        result[j, i] = 0;
                     }
                     else
                     {
-                        result[i, j] = 1;
+                        result[j, i] = 1;
                     }
                 }
             return result;
 
         }
 
+        public static int ResizeWidth = 32;
+        public static int ResizeHeight = 32;
+
         public static double[,] CreateDoubleMatrix_16X16(Bitmap bitmap)
         {
-            double[,] result = new double[16, 16];
-            Bitmap resizedBitmap = BitmapResize(bitmap, 16, 16);
+            double[,] result = new double[ResizeWidth, ResizeHeight];
+            Bitmap resizedBitmap = BitmapResize(bitmap, ResizeWidth, ResizeHeight);
+
             for (int i = 0; i < resizedBitmap.Width; ++i)
                 for (int j = 0; j < resizedBitmap.Height; ++j)
                 {
                     if (correlation(resizedBitmap.GetPixel(i, j)))
                     {
-                        result[i, j] = 0;
+                        result[j, i] = 0;
                     }
                     else
                     {
-                        result[i, j] = 1;
+                        result[j, i] = 1;
                     }
                 }
             return result;

@@ -8,9 +8,8 @@ using System.Threading.Tasks;
 namespace RO_Project {
     class MyArraySerializer {
 
-        public static void SerializeArray(byte[,] array, StreamWriter sw) {
+        public static void SerializeArray(byte[,] array, StreamWriter sw, int N, int M) {
 
-            int N = 16, M = 16;
 
             for (int i = 0; i < N; i++) {
                 for (int j = 0; j < M; j++) {
@@ -24,10 +23,9 @@ namespace RO_Project {
             sw.Close();
         }
 
-        public static void SerializeDoubleArray(double[,] array, StreamWriter sw)
+        public static void SerializeDoubleArray(double[,] array, StreamWriter sw, int N, int M)
         {
 
-            int N = 16, M = 16;
 
             for (int i = 0; i < N; i++)
             {
@@ -43,9 +41,8 @@ namespace RO_Project {
             sw.Close();
         }
 
-        public static byte[,] DeserializeArray(StreamReader sr) {
+        public static byte[,] DeserializeArray(StreamReader sr, int N, int M) {
 
-            int N = 16, M = 16;
 
             byte[,] deserializedArray = new byte[N, M];
 
@@ -62,10 +59,8 @@ namespace RO_Project {
             return deserializedArray;
         }
 
-        public static double[,] DeserializeDoubleArray(StreamReader sr)
+        public static double[,] DeserializeDoubleArray(StreamReader sr, int N, int M)
         {
-
-            int N = 16, M = 16;
 
             double[,] deserializedArray = new double[N, M];
 
