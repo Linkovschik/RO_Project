@@ -395,18 +395,16 @@ namespace RO_Project {
 
         public static void UniteRealSymbols(ref List<RealSymbol> realSymbols)
         {
+            realSymbols.Reverse();
             //достройка i,j,=,: 
-            for (int i = 0; i < realSymbols.Count; ++i)
+            for (int i = realSymbols.Count - 1; i >= 0; --i)
             {
-                
                 Rectangle symbolRectangle = realSymbols[i].GetRealBounds();
-               
-
                 //будем искать мою часть, но искать с минимальной высостой до неё. 
                 RealSymbol myParticle = null;
                 int heightToMyParticle = int.MaxValue;
                 //цикл j для поиска particle (точки для 'i')
-                for (int j = 0; j < realSymbols.Count; ++j)
+                for (int j = realSymbols.Count-1; j >= 0; --j)
                 {
                     Rectangle particleRectangle = realSymbols[j].GetRealBounds();
                     Point particleRectCenter = new Point(particleRectangle.Left + particleRectangle.Width / 2, particleRectangle.Top + particleRectangle.Height / 2);
@@ -427,13 +425,16 @@ namespace RO_Project {
                 if(myParticle!=null)
                 {
                     //а потом добавим её реальную биткарту к своей реальной биткарте
-                    realSymbols[i] = RealSymbol.SumSymbols(realSymbols[i], myParticle);
+                    realSymbols[i]=(RealSymbol.SumSymbols(realSymbols[i], myParticle));
                     //найденную частичку удалим из списка реальных символов
                     realSymbols.Remove(myParticle);
+                    i--;
                 }
-                realSymbols[i].Print();
-            }
 
+
+                
+            }
+            realSymbols.Reverse();
         }
 
         private static RealSymbol SumSymbols(RealSymbol bodySymbol, RealSymbol particleSymbol)
