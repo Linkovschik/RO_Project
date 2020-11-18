@@ -34,14 +34,15 @@ namespace RO_Project {
             ResizeWidth = _ResizeWidth;
             ResizeHeight = _ResizeHeight;
 
-            ReadEtalons(etalonArraysTxtPath);
-            ReadRules(rulesDirectoryPath);
+            
 
             recognitionResult = "";
         }
 
         public void Start(Bitmap imageBitmap)
         {
+            ReadEtalons(etalonArraysTxtPath);
+            ReadRules(rulesDirectoryPath);
             string result = "";
             //получили все символы
             List<Symbol> symbols = GetSymbols(imageBitmap);
@@ -170,7 +171,7 @@ namespace RO_Project {
             }
         }
 
-        //считать
+        //считать правила
         private void ReadRules(string rulesDirectoryPath) {
 
             string[] directories = Directory.GetDirectories(rulesDirectoryPath);
@@ -192,6 +193,7 @@ namespace RO_Project {
             rules.Add(new IndexRule());
         }
 
+        //распознать символ (сравнение с эталоном)
         private void RecognizeSymbol(Symbol symbol)
         {
             //минимальное отклонение от эталона
@@ -210,128 +212,111 @@ namespace RO_Project {
                 symbol.SetMark(result);
         }
 
-        private bool correlation(Color currColor)
-        {
-            return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
-        }
-
-
-
-        //запуск поиска в ширину для бнаружения границ символа
-        
-
-
-
-        
-
-        
-
-        private Symbol SumSymbols(Symbol bodySymbol, Symbol particleSymbol)
-        {
-
-        }
-
         public List<Symbol> GetSymbols(Bitmap imageBitMap)
         {
+            //сначала получим настоящие символы, т.е. с реальными биткартами и границами
             List<RealSymbol> realSymbols = new List<RealSymbol>();
             for(int i=0; i< imageBitMap.Width; ++i)
             {
                 for(int j=0; j< imageBitMap.Height; ++j)
                 {
                     Point pixel = new Point(i, j);
-                    if(!correlation(imageBitMap.GetPixel(i,j)) && !IsPixelBelongsToSymbol(realSymbols, pixel))
+                    if(!isWhiteColor(imageBitMap.GetPixel(i,j)) && !IsPixelBelongsToSymbol(realSymbols, pixel))
                     {
                         RealSymbol realSymbol = new RealSymbol(pixel, imageBitMap);
                         realSymbols.Add(realSymbol);
-                        Bitmap symbolBitMap = GetImagePart(pixel, imageBitmap, realSymbolBounds);
-                        symbolBitMap = MakeASquareBitmap(symbolBitMap);
-                        symbolBitMap = BitmapResize(symbolBitMap, ResizeWidth, ResizeHeight);
-                        symbols.Add(new Symbol(realSymbolBounds, symbolBitMap));
                     }
                 }
             }
 
+            //достройка символов i,j,=,; и т.п.
+            RealSymbol.UniteRealSymbols(ref realSymbols);
 
-            //достройка i,j,=,: 
-            List<int> indexesOfParticlesToClear = new List<int>();
-            for (int i = 0; i < symbols.Count; ++i)
+            //теперь можно на основе реальных данных создать символы для распознавания
+            List<Symbol> result = new List<Symbol>();
+            foreach (RealSymbol realSymbol in realSymbols)
             {
-                Rectangle symbolRectangle = symbols[i].GetRectangle();
-                Point rectCenter = new Point(symbolRectangle.Left + symbolRectangle.Width / 2, symbolRectangle.Top + symbolRectangle.Height / 2);
-                //цикл j для поиска particle (точки для 'i')
-                for(int j=0; j< symbols.Count; ++j)
-                {
-                    Rectangle particleRectangle = symbols[j].GetRectangle();
-                    if (i!=j)
-                    {
-                        //точка сверху над телом i или j, или же вторая палка знака '=' лежит в моих границах 
-                        if (rectCenter.X> particleRectangle.Left && rectCenter.X < particleRectangle.Left + particleRectangle.Width-1 &&
-                            //ищу так, чтобы моя координата по Y была ниже, чем то, что я ищу. Т.е. ищем для тела 'i' верхнюю точку, для '=' верхнюю палку и т.д.
-                            symbolRectangle.Top> particleRectangle.Top)
-                        {
-                            indexesOfParticlesToClear.Add(j);
-                            symbols[i] = SumSymbols(symbols[i], symbols[j]);
-                        }
-                    }
-                }
+                result.Add(new Symbol(realSymbol, ResizeWidth, ResizeHeight));
             }
-
-            return symbols;
+            return result;
         }
 
-        private bool IsPixelBelongsToSymbol(List<Symbol> symbols, Point pixel)
+        private bool IsPixelBelongsToSymbol(List<RealSymbol> symbols, Point pixel)
         {
             foreach (var symbol in symbols)
             {
-                if (symbol.GetRectangle().Contains(pixel))
+                if (symbol.GetRealBounds().Contains(pixel))
                     return true;
             }
             return false;
         }
 
-
-
-        //создать матрицу 16*16 для картинки с конкретным символом
-        public byte[,] CreateByteMatrix_16X16(Bitmap bitmap)
+        private static bool isWhiteColor(Color currColor)
         {
-            byte[,] result = new byte[ResizeWidth, ResizeHeight];
-            for(int i=0; i< bitmap.Width; ++i)
-                for(int j=0; j< bitmap.Height; ++j)
+            return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
+        }
+
+        //создать матрицу 16*16 для картинки с конкретным символом - эталоном
+        //тип double, поскольку нужно получить усреднённый эталон
+        public static double[,] CreateDoubleMatrixForEtalon(Bitmap bitmap)
+        {
+            //bitmap = Symbol.BitmapResize(bitmap, ResizeWidth, ResizeHeight);
+            double[,] result = new double[bitmap.Height, bitmap.Width];
+            for (int i = 0; i < bitmap.Height; ++i)
+            {
+                for (int j = 0; j < bitmap.Width; ++j)
                 {
-                    if (correlation(bitmap.GetPixel(i,j)))
+                    if (isWhiteColor(bitmap.GetPixel(j, i)))
                     {
-                        result[j, i] = 0;
+                        result[i, j] = 0;
                     }
                     else
                     {
-                        result[j, i] = 1;
+                        result[i, j] = 1;
                     }
                 }
+            }
+            for (int i = 0; i < bitmap.Height; ++i)
+            {
+                for (int j = 0; j < bitmap.Width; ++j)
+                {
+                    Console.Write(result[i, j] + " ");
+                }
+                Console.Write("\n");
+            }
             return result;
 
         }
 
-        public double[,] CreateDoubleMatrix_16X16(Bitmap bitmap)
+        //функция для определение средней матрицы эталонных изображений одного символа(используется только для этого пока что)
+        public static double[,] GetAverageArrayForEtalon(List<double[,]> arrays)
         {
-            double[,] result = new double[ResizeWidth, ResizeHeight];
+            double[,] result = new double[arrays[0].GetLength(0), arrays[0].GetLength(1)];
 
-            for (int i = 0; i < bitmap.Width; ++i)
-                for (int j = 0; j < bitmap.Height; ++j)
+            //записываем сумму в результат
+            foreach (var array in arrays)
+            {
+
+                for (int i = 0; i < array.GetLength(0); ++i)
                 {
-                    if (correlation(bitmap.GetPixel(i, j)))
+                    for (int j = 0; j < array.GetLength(1); ++j)
                     {
-                        result[j, i] = 0;
+                        result[i, j] += array[i, j];
+                        //Console.Write(array[i, j] + " ");
                     }
-                    else
-                    {
-                        result[j, i] = 1;
-                    }
+                    //Console.Write("\n");
                 }
+
+            }
+
+            //делим на количество
+            for (int i = 0; i < result.GetLength(0); ++i)
+                for (int j = 0; j < result.GetLength(1); ++j)
+                {
+                    result[i, j] /= (double)arrays.Count;
+                }
+
             return result;
-
         }
-
-        
-
     }
 }

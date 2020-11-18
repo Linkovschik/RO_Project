@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,9 +22,10 @@ namespace RO_Project {
         public string Mark { get; private set; }
 
         //конструктор
-        public Symbol(RealSymbol realSymbol) {
+        public Symbol(RealSymbol realSymbol, int ResizeWidth, int ResizeHeight) {
             realSymbolBounds = realSymbol.GetRealBounds();
-            bitMap = realSymbol.GetBitMap();
+            bitMap = MakeASquareBitmap(realSymbol.GetBitMap());
+            bitMap = BitmapResize(bitMap, ResizeWidth, ResizeHeight);
             array = CreateByteMatrix_16X16(bitMap);
         }
 
@@ -59,7 +62,7 @@ namespace RO_Project {
             return bitMap;
         }
 
-        private bool correlation(Color currColor)
+        private bool isWhiteColor(Color currColor)
         {
             return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
         }
@@ -67,44 +70,25 @@ namespace RO_Project {
         //создать матрицу 16*16 для картинки с конкретным символом
         private byte[,] CreateByteMatrix_16X16(Bitmap bitmap)
         {
-            byte[,] result = new byte[bitmap.Width, bitmap.Height];
-            for (int i = 0; i < bitmap.Width; ++i)
-                for (int j = 0; j < bitmap.Height; ++j)
+            byte[,] result = new byte[bitmap.Height, bitmap.Width];
+            for (int i = 0; i < bitmap.Height; ++i)
+            {
+                for (int j = 0; j < bitmap.Width; ++j)
                 {
-                    if (correlation(bitmap.GetPixel(i, j)))
+                    if (isWhiteColor(bitmap.GetPixel(j, i)))
                     {
-                        result[j, i] = 0;
+                        result[i, j] = 0;
                     }
                     else
                     {
-                        result[j, i] = 1;
+                        result[i, j] = 1;
                     }
                 }
+            }
             return result;
-
         }
 
-        private double[,] CreateDoubleMatrix_16X16(Bitmap bitmap)
-        {
-            double[,] result = new double[bitmap.Width, bitmap.Height];
-
-            for (int i = 0; i < bitmap.Width; ++i)
-                for (int j = 0; j < bitmap.Height; ++j)
-                {
-                    if (correlation(bitmap.GetPixel(i, j)))
-                    {
-                        result[j, i] = 0;
-                    }
-                    else
-                    {
-                        result[j, i] = 1;
-                    }
-                }
-            return result;
-
-        }
-
-        private Bitmap BitmapResize(Bitmap image, int Width, int Height)
+        public static Bitmap BitmapResize(Bitmap image, int Width, int Height)
         {
             int sourceWidth = image.Width;
             int sourceHeight = image.Height;
@@ -189,6 +173,11 @@ namespace RO_Project {
             Mark = _mark;
         }
 
+        private bool correlation(Color currColor)
+        {
+            return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
+        }
+
         public void SetMark(string _mark)
         {
             Mark = _mark;
@@ -212,13 +201,26 @@ namespace RO_Project {
 
         public RealSymbol(Point pixel, Bitmap imageBitMap)
         {
+            //сначала найдём граница поиском в ширину
             realBoundaries = StartBFSFromPixel(pixel, imageBitMap);
+            //потом создадим свою бит-карту для символа
             bitMap = GetImagePart(pixel, imageBitMap, realBoundaries);
         }
 
-        private RealSymbol(Bitmap symbolRealBitMap)
+        private RealSymbol(Rectangle _realBoundaries, Bitmap _bitMap)
         {
-            bitMap = symbolRealBitMap;
+            realBoundaries = _realBoundaries;
+            bitMap = _bitMap;
+        }
+
+        public void Print()
+        {
+            for (int i = 0; i < bitMap.Height; i++)
+            {
+                for (int j = 0; j < bitMap.Width; j++)
+                    Console.Write((isWhiteColor(bitMap.GetPixel(j,i))?0:1).ToString() + " ");
+                Console.WriteLine();
+            }
         }
 
         public Rectangle GetRealBounds()
@@ -229,6 +231,11 @@ namespace RO_Project {
         public Bitmap GetBitMap()
         {
             return bitMap;
+        }
+
+        private bool isWhiteColor(Color currColor)
+        {
+            return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
         }
 
         private Rectangle StartBFSFromPixel(Point pixel, Bitmap bitMap)
@@ -290,7 +297,7 @@ namespace RO_Project {
                        newPixel.X >= 0 &&
                        newPixel.Y < bitMap.Height &&
                        newPixel.Y >= 0 &&
-                       !correlation(bitMap.GetPixel(newPixel.X, newPixel.Y)) &&
+                       !isWhiteColor(bitMap.GetPixel(newPixel.X, newPixel.Y)) &&
                        !Visited(newPixel))
                         toVisitList.Enqueue(newPixel);
                 }
@@ -365,7 +372,7 @@ namespace RO_Project {
                        newPixel.X >= 0 &&
                        newPixel.Y < bitMap.Height &&
                        newPixel.Y >= 0 &&
-                       !correlation(bitMap.GetPixel(newPixel.X, newPixel.Y)) &&
+                       !isWhiteColor(bitMap.GetPixel(newPixel.X, newPixel.Y)) &&
                        !Visited(newPixel))
                         toVisitList.Enqueue(newPixel);
                 }
@@ -386,15 +393,75 @@ namespace RO_Project {
             }
         }
 
-        public static RealSymbol SumSymbols(RealSymbol bodySymbol, RealSymbol particleSymbol)
+        public static void UniteRealSymbols(ref List<RealSymbol> realSymbols)
         {
-            int width = Math.Max(particleSymbol.realBoundaries.Left + particleSymbol.realBoundaries.Width, bodySymbol.realBoundaries.Left);
-            int height = bodySymbol.realBoundaries.Top + bodySymbol.realBoundaries.Height - particleSymbol.realBoundaries.Top;
-            Bitmap result = new Bitmap(width,
-                                       bodySymbol.bitMap.Height + particleSymbol.bitMap.Height);
+            //достройка i,j,=,: 
+            for (int i = 0; i < realSymbols.Count; ++i)
+            {
+                
+                Rectangle symbolRectangle = realSymbols[i].GetRealBounds();
+               
 
-            for(int )
-            return result;
+                //будем искать мою часть, но искать с минимальной высостой до неё. 
+                RealSymbol myParticle = null;
+                int heightToMyParticle = int.MaxValue;
+                //цикл j для поиска particle (точки для 'i')
+                for (int j = 0; j < realSymbols.Count; ++j)
+                {
+                    Rectangle particleRectangle = realSymbols[j].GetRealBounds();
+                    Point particleRectCenter = new Point(particleRectangle.Left + particleRectangle.Width / 2, particleRectangle.Top + particleRectangle.Height / 2);
+                    if (i != j)
+                    {
+                        //точка сверху над телом i или j, или же вторая палка знака '=' лежит в моих границах 
+                        if (particleRectCenter.X > symbolRectangle.Left && particleRectCenter.X < symbolRectangle.Left + symbolRectangle.Width - 1 &&
+                            //ищу так, чтобы моя координата по Y была ниже, чем то, что я ищу. Т.е. ищем для тела 'i' верхнюю точку, для '=' верхнюю палку и т.д.
+                            symbolRectangle.Top > particleRectangle.Top && 
+                            heightToMyParticle > (symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1))
+                        {
+                            myParticle = realSymbols[j];
+                            heightToMyParticle = (symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1);
+                           
+                        }
+                    }
+                }
+                if(myParticle!=null)
+                {
+                    //а потом добавим её реальную биткарту к своей реальной биткарте
+                    realSymbols[i] = RealSymbol.SumSymbols(realSymbols[i], myParticle);
+                    //найденную частичку удалим из списка реальных символов
+                    realSymbols.Remove(myParticle);
+                }
+                realSymbols[i].Print();
+            }
+
+        }
+
+        private static RealSymbol SumSymbols(RealSymbol bodySymbol, RealSymbol particleSymbol)
+        {
+            int left = Math.Min(particleSymbol.realBoundaries.Left, bodySymbol.realBoundaries.Left);
+            int top = Math.Min(particleSymbol.realBoundaries.Top, bodySymbol.realBoundaries.Top);
+            int width = Math.Max(particleSymbol.realBoundaries.Left + particleSymbol.realBoundaries.Width - 1, bodySymbol.realBoundaries.Left + bodySymbol.realBoundaries.Width - 1) - left + 1;
+            int height = bodySymbol.realBoundaries.Top + bodySymbol.realBoundaries.Height - particleSymbol.realBoundaries.Top;
+            Bitmap result = new Bitmap(width,height);
+            Rectangle resRect = new Rectangle(left, top, width, height);
+
+            for(int i=left; i< width+left;++i)
+            {
+                for(int j=top; j<height+top; ++j)
+                {
+                    if (i >= particleSymbol.realBoundaries.Left && i <= particleSymbol.realBoundaries.Left + particleSymbol.realBoundaries.Width - 1 &&
+                        j >= particleSymbol.realBoundaries.Top && j  <= particleSymbol.realBoundaries.Top + particleSymbol.realBoundaries.Height - 1)
+                        result.SetPixel(i-left, j-top, particleSymbol.bitMap.GetPixel(i- particleSymbol.realBoundaries.Left, j - particleSymbol.realBoundaries.Top));
+                    else if (i >= bodySymbol.realBoundaries.Left && i <= bodySymbol.realBoundaries.Left + bodySymbol.realBoundaries.Width - 1 &&
+                        j >= bodySymbol.realBoundaries.Top && j <= bodySymbol.realBoundaries.Top + bodySymbol.realBoundaries.Height - 1)
+                        result.SetPixel(i - left, j - top, bodySymbol.bitMap.GetPixel(i - bodySymbol.realBoundaries.Left, j - bodySymbol.realBoundaries.Top));
+                    else
+                    {
+                        result.SetPixel(i - left, j - top, Color.FromArgb(255,255,255));
+                    }
+                }
+            }
+            return new RealSymbol(resRect,result);
         }
     }
 }

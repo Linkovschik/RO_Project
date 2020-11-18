@@ -20,7 +20,7 @@ namespace RO_Project {
         public string pngPath;
 
         //папка, куда сохраняются преобразованные в текстовый формат 
-        //эталонные матрицы (16*16)
+        //эталонные матрицы
         public string txtPath;
 
         //папка с правилами
@@ -47,9 +47,9 @@ namespace RO_Project {
                 Directory.CreateDirectory(pngPath);
                 Directory.CreateDirectory(txtPath);
                 Directory.CreateDirectory(rulesPath);
+                recognizer = new MyTextRecognizer(txtPath, rulesPath, 32, 32);
                 imageSaver = new MyImageSaver(pngPath);
                 //инициирую объект-распознаватель. Из него потом полочу результат
-                recognizer = new MyTextRecognizer(txtPath, rulesPath, 32, 32);
             }
             catch(Exception e)
             {
@@ -114,55 +114,18 @@ namespace RO_Project {
                             System.Drawing.Bitmap image = new Bitmap(file);
 
                             //матрица эталонная для символа
-                            var temp = recognizer.CreateDoubleMatrix_16X16(image);
+                            var temp = MyTextRecognizer.CreateDoubleMatrixForEtalon(image);
                             etalonsArrays.Add(temp);
-                            for (int i = 0; i < temp.GetLength(0); ++i)
-                            {
-                                for (int j = 0; j < temp.GetLength(1); ++j)
-                                {
-                                    
-                                    Console.Write(temp[i, j] + " ");
-                                }
-                                Console.Write("\n");
-                            }
+                           
                         }
                         Directory.CreateDirectory(txtPath + "\\" + symbolTypeDirectoryName);
-                        MyArraySerializer.SerializeDoubleArray(SumByteArrays(etalonsArrays), recognizer.ResizeWidth, recognizer.ResizeHeight, new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"));
+                        MyArraySerializer.SerializeDoubleArray(MyTextRecognizer.GetAverageArrayForEtalon(etalonsArrays), recognizer.ResizeWidth, recognizer.ResizeHeight, new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"));
                     }
                 }
                
             }
         }
-        //функция для суммирования матриц эталонных изображений одного символа (используется только для этого пока что)
-        private double[,] SumByteArrays(List<double[,]> arrays)
-        {
-            double[,] result = new double[arrays[0].GetLength(0), arrays[0].GetLength(1)];
-
-            //записываем сумму в результат
-            foreach (var array in arrays)
-            {
-
-                for (int i = 0; i < array.GetLength(0); ++i)
-                {
-                    for (int j = 0; j < array.GetLength(1); ++j)
-                    {
-                        result[i, j] += array[i, j];
-                        //Console.Write(array[i, j] + " ");
-                    }
-                    //Console.Write("\n");
-                }
-                    
-            }
-
-            //делим на количество
-            for (int i = 0; i < result.GetLength(0); ++i)
-                for (int j = 0; j < result.GetLength(1); ++j)
-                {
-                    result[i, j] /= (double)arrays.Count;
-                }
-
-            return result;
-        }
+        
         //вычленить конкретные символы на выбранной(из проводника) картинке и получить их в виде отдельных картинок
         private void CreateEtalonImages(object sender, EventArgs e) {
             //настройка диалога
