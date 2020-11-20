@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace RO_Project {
+
     public abstract class IRule {
         public enum Result
         {
@@ -13,7 +15,20 @@ namespace RO_Project {
             Belong = 1,
             End = 2
         }
-        public abstract int Update(Symbol symbol);
+        public abstract int Update(PrimalSymbol symbol);
+        public abstract string GetMeaning();
+        public abstract void ClearStates();
+    }
+    
+    public abstract class IConstructRule
+    {
+        public enum Result
+        {
+            NotBelong = 0,
+            Belong = 1,
+            End = 2
+        }
+        public abstract int Update(RealSymbol symbol, List<RealSymbol> realSymbols);
         public abstract string GetMeaning();
     }
 
@@ -45,11 +60,11 @@ namespace RO_Project {
             }
         }
 
-        public override int Update(Symbol symbol)
+        public override int Update(PrimalSymbol symbol)
         {
             int result = -1;
             //если по правилу
-            if(symbol.Mark == marksList[currentState])
+            if(symbol.GetMeaning() == marksList[currentState])
             {
                 currentState += 1;
                 result = (int)Result.Belong;
@@ -77,52 +92,146 @@ namespace RO_Project {
             return meaning;
         }
 
+        public override void ClearStates()
+        {
+            currentState = 0;
+        }
     }
 
     public class IndexRule : IRule
     {
         string meaning;
-        private Symbol mainSymbol;
+        private PrimalSymbol mainSymbol;
         int currentState;
+        Rectangle rectangle;
 
         public IndexRule()
         {
-            meaning = "-ый";
+            meaning = "";
             currentState = 0;
         }
 
+        public override void ClearStates()
+        {
+            currentState = 0;
+        }
 
         public override string GetMeaning()
         {
             return meaning;
         }
 
-        public override int Update(Symbol symbol)
+        public override int Update(PrimalSymbol symbol)
         {
+            Rectangle symbolRectangle = symbol.GetRealBoundaries();
             int result = -1;
-            if(currentState==0)
+            if (currentState == 0)
             {
+                currentState = 1;
+                rectangle = new Rectangle(symbolRectangle.X, symbolRectangle.Y, symbolRectangle.Width, symbolRectangle.Height);
                 mainSymbol = symbol;
-                currentState += 1;
                 result = (int)Result.Belong;
             }
-            else if(currentState==1)
+            else if (currentState == 1)
             {
-                if (mainSymbol.GetRectangle().Top + mainSymbol.GetRectangle().Height / 2 <= symbol.GetRectangle().Top)
+                currentState = 0;
+                int left = Math.Min(symbolRectangle.Left, rectangle.Left);
+                int right = Math.Max(symbolRectangle.Right, rectangle.Right);
+                int top = Math.Min(symbolRectangle.Top, rectangle.Top);
+                int bottom = Math.Max(symbolRectangle.Bottom, rectangle.Bottom);
+                rectangle = new Rectangle(left, top, right - left + 1, bottom - top + 1);
+
+                Rectangle mainSymbolRectangle = mainSymbol.GetRealBoundaries();
+                Point rectCenter = new Point(rectangle.Left + rectangle.Width / 2, rectangle.Top + rectangle.Height / 2);
+             
+                if ((mainSymbolRectangle.Top > rectCenter.Y &&
+                   symbolRectangle.Top < rectCenter.Y) || 
+                   (symbolRectangle.Top > rectCenter.Y &&
+                   mainSymbolRectangle.Top < rectCenter.Y))
                 {
-                    meaning = mainSymbol.Mark + " " + symbol.Mark + meaning;
-                    currentState = 0;
+                    if(mainSymbolRectangle.Top > rectCenter.Y &&
+                       symbolRectangle.Top < rectCenter.Y
+                    )
+                    {
+                        meaning = mainSymbol.GetMeaning() + "-ый в степени " + symbol.GetMeaning();
+                    }
+                    else 
+                    if(symbolRectangle.Top > rectCenter.Y &&
+                       mainSymbolRectangle.Top < rectCenter.Y)
+                    {
+                        meaning = symbol.GetMeaning() + "-ый в степени " + mainSymbol.GetMeaning();
+                    }
+                 
                     result = (int)Result.End;
                 }
                 else
                 {
-                    currentState = 0;
                     result = (int)Result.NotBelong;
                 }
-                     
+
             }
             return result;
         }
     }
 
+    //public class ConstructIJ : IConstructRule
+    //{
+    //    string meaning;
+    //    int state;
+
+    //    public ConstructIJ()
+    //    {
+    //        state = 0;
+    //        meaning = "";
+    //    }
+
+    //    public override string GetMeaning()
+    //    {
+    //        return meaning;
+    //    }
+
+    //    public override int Update(RealSymbol symbol)
+    //    {
+    //        int result = -1;
+    //        if()
+
+    //        List<RealSymbol> otherSymbols = new List<RealSymbol>();
+    //        otherSymbols.Remove(symbol);
+    //        otherSymbols.Reverse();
+    //        Rectangle symbolRectangle = symbol.GetRealBounds();
+    //        //будем искать мою часть, но искать с минимальной высостой до неё. 
+    //        RealSymbol myParticle = null;
+    //        int heightToMyParticle = int.MaxValue;
+    //        //цикл j для поиска particle (точки для 'i')
+    //        for (int j = otherSymbols.Count - 1; j >= 0; --j)
+    //        {
+    //            Rectangle particleRectangle = otherSymbols[j].GetRealBounds();
+    //            Point particleRectCenter = new Point(particleRectangle.Left + particleRectangle.Width / 2, particleRectangle.Top + particleRectangle.Height / 2);
+    //            if (symbol != otherSymbols[j])
+    //            {
+    //                //точка сверху над телом i или j, или же вторая палка знака '=' лежит в моих границах 
+    //                if (particleRectCenter.X > symbolRectangle.Left && particleRectCenter.X < symbolRectangle.Left + symbolRectangle.Width - 1 &&
+    //                    //ищу так, чтобы моя координата по Y была ниже, чем то, что я ищу. Т.е. ищем для тела 'i' верхнюю точку, для '=' верхнюю палку и т.д.
+    //                    symbolRectangle.Top > particleRectangle.Top &&
+    //                    heightToMyParticle > (symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1))
+    //                {
+    //                    myParticle = otherSymbols[j];
+    //                    heightToMyParticle = (symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1);
+
+    //                }
+    //            }
+    //        }
+    //        if (myParticle != null)
+    //        {
+    //            //а потом добавим её реальную биткарту к своей реальной биткарте
+    //            realSymbols[i] = (RealSymbol.SumSymbols(realSymbols[i], myParticle));
+    //            done.Add(realSymbols[i]);
+    //            //найденную частичку удалим из списка реальных символов
+    //            realSymbols.Remove(myParticle);
+    //        }
+
+    //        otherSymbols.Reverse();
+    //        return result;
+    //    }
+    //}
 }

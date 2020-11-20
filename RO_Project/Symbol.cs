@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -9,66 +10,65 @@ using System.Threading.Tasks;
 
 namespace RO_Project {
 
-    public class Symbol {
-
-        //биткарта, сооьтветствующая символу
-        public byte[,] array;
-
-        //битмап
-        private Bitmap bitMap;
-
-        private Rectangle realSymbolBounds;
-
-        public string Mark { get; private set; }
-
-        //конструктор
-        public Symbol(RealSymbol realSymbol, int ResizeWidth, int ResizeHeight) {
-            realSymbolBounds = realSymbol.GetRealBounds();
-            bitMap = MakeASquareBitmap(realSymbol.GetBitMap());
-            bitMap = BitmapResize(bitMap, ResizeWidth, ResizeHeight);
-            array = CreateByteMatrix_16X16(bitMap);
-        }
-
-        public void SetMark(string _mark)
+    public class PrimalSymbolComparer<T> : IComparer<T>
+      where T : PrimalSymbol
+    {
+        private int y_center;
+        public PrimalSymbolComparer(Rectangle _fatherRectangle)
         {
-            Mark = _mark;
+            y_center = _fatherRectangle.Top + _fatherRectangle.Height/2;
         }
-
-        public double GetDelta(EtalonSymbol etalon) {
-
-            double delta = 0;
-
-            for (int j = 0; j < array.GetLength(0); j++)
-                for (int i = 0; i < array.GetLength(1); i++)
-                    delta += Math.Abs(array[j, i] - etalon.array[j, i]);
-
-            return delta;
-        }
-
-        public Rectangle GetRectangle()
+        public int Compare(T x, T y)
         {
-            return realSymbolBounds;
-        }
+            PrimalSymbol x_symbol = x as PrimalSymbol;
+            PrimalSymbol y_symbol = y as PrimalSymbol;
 
-        public void Print() {
-            for (int i = 0; i < array.GetLength(0); i++) {
-                for (int j = 0; j < array.GetLength(1); j++)
-                    Console.Write(array[i, j] + " ");
-                Console.WriteLine();
+            if (x_symbol.GetRealBoundaries().Bottom > y_symbol.GetRealBoundaries().Bottom)
+                return 1;
+            if (x_symbol.GetRealBoundaries().Bottom < y_symbol.GetRealBoundaries().Bottom)
+                return -1;
+            else
+            {
+                if (x_symbol.GetRealBoundaries().Left > y_symbol.GetRealBoundaries().Left)
+                    return 1;
+                if (x_symbol.GetRealBoundaries().Left < y_symbol.GetRealBoundaries().Left)
+                    return -1;
+                else return 0;
             }
+            //if (x_symbol.GetRealBoundaries().Top > y_center && y_symbol.GetRealBoundaries().Top < y_center)
+            //    return 1;
+            //if (x_symbol.GetRealBoundaries().Top < y_center && y_symbol.GetRealBoundaries().Top > y_center)
+            //    return -1;
+            //else
+            //{
+            //    if (x_symbol.GetRealBoundaries().Left > y_symbol.GetRealBoundaries().Left)
+            //        return 1;
+            //    if (x_symbol.GetRealBoundaries().Left < y_symbol.GetRealBoundaries().Left)
+            //        return -1;
+            //    else return 0;
+            //}
+            //if (x_symbol.GetRealBoundaries().Left > y_symbol.GetRealBoundaries().Left)
+            //    return 1;
+            //if (x_symbol.GetRealBoundaries().Left < y_symbol.GetRealBoundaries().Left)
+            //    return -1;
+            //else return 0;
         }
+    }
 
-        public Bitmap GetBitMap() {
-            return bitMap;
-        }
+    public static class Symbol {
 
-        private bool isWhiteColor(Color currColor)
+
+
+        public static int ResizeWidth = 32;
+        public static int ResizeHeight = 32;
+
+        private static bool isWhiteColor(Color currColor)
         {
             return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
         }
 
         //создать матрицу 16*16 для картинки с конкретным символом
-        private byte[,] CreateByteMatrix_16X16(Bitmap bitmap)
+        public static byte[,] CreateByteMatrix(Bitmap bitmap)
         {
             byte[,] result = new byte[bitmap.Height, bitmap.Width];
             for (int i = 0; i < bitmap.Height; ++i)
@@ -135,7 +135,7 @@ namespace RO_Project {
 
         }
 
-        private Bitmap MakeASquareBitmap(Bitmap bitMap)
+        public static Bitmap MakeASquareBitmap(Bitmap bitMap)
         {
             int Size = Math.Max(bitMap.Width, bitMap.Height);
             int shift_X = (Size - bitMap.Width) / 2;
@@ -196,29 +196,57 @@ namespace RO_Project {
 
     public class RealSymbol
     {
-        private Bitmap bitMap;
+        private Bitmap realBitMap;
         private Rectangle realBoundaries;
+        private string meaning;
+        private byte[,] array;
 
-        public RealSymbol(Point pixel, Bitmap imageBitMap)
+        private RealSymbol(Point pixel, Bitmap imageBitMap)
         {
             //сначала найдём граница поиском в ширину
             realBoundaries = StartBFSFromPixel(pixel, imageBitMap);
             //потом создадим свою бит-карту для символа
-            bitMap = GetImagePart(pixel, imageBitMap, realBoundaries);
+            realBitMap = GetImagePart(pixel, imageBitMap, realBoundaries);
+            array = Symbol.CreateByteMatrix(Symbol.BitmapResize(Symbol.MakeASquareBitmap(realBitMap), Symbol.ResizeWidth, Symbol.ResizeHeight));
+            PrintArray();
         }
 
         private RealSymbol(Rectangle _realBoundaries, Bitmap _bitMap)
         {
-            realBoundaries = _realBoundaries;
-            bitMap = _bitMap;
+            realBoundaries = new Rectangle(_realBoundaries.X,_realBoundaries.Y, _realBoundaries.Width, _realBoundaries.Height);
+            realBitMap = _bitMap;
+            array = Symbol.CreateByteMatrix(Symbol.BitmapResize(Symbol.MakeASquareBitmap(realBitMap), Symbol.ResizeWidth, Symbol.ResizeHeight));
         }
 
-        public void Print()
+        public byte[,] GetByteArray()
         {
-            for (int i = 0; i < bitMap.Height; i++)
+            return array;
+        }
+
+        public void SetMeaning(string _meaning)
+        {
+            meaning = _meaning;
+        }
+        public string GetMeaning()
+        {
+            return meaning;
+        }
+
+        public void PrintRealBitMap()
+        {
+            for (int i = 0; i < realBitMap.Height; i++)
             {
-                for (int j = 0; j < bitMap.Width; j++)
-                    Console.Write((isWhiteColor(bitMap.GetPixel(j,i))?0:1).ToString() + " ");
+                for (int j = 0; j < realBitMap.Width; j++)
+                    Console.Write((isWhiteColor(realBitMap.GetPixel(j,i))?0:1).ToString() + " ");
+                Console.WriteLine();
+            }
+        }
+        public void PrintArray()
+        {
+            for (int i = 0; i < array.GetLength(0); i++)
+            {
+                for (int j = 0; j < array.GetLength(1); j++)
+                    Console.Write(array[i,j].ToString() + " ");
                 Console.WriteLine();
             }
         }
@@ -228,14 +256,19 @@ namespace RO_Project {
             return realBoundaries;
         }
 
-        public Bitmap GetBitMap()
+        public Bitmap GetRealBitMap()
         {
-            return bitMap;
+            return realBitMap;
         }
 
-        private bool isWhiteColor(Color currColor)
+        private static bool IsPixelBelongsToSymbol(List<RealSymbol> symbols, Point pixel)
         {
-            return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
+            foreach (var symbol in symbols)
+            {
+                if (symbol.GetRealBounds().Contains(pixel))
+                    return true;
+            }
+            return false;
         }
 
         private Rectangle StartBFSFromPixel(Point pixel, Bitmap bitMap)
@@ -393,18 +426,22 @@ namespace RO_Project {
             }
         }
 
-        public static void UniteRealSymbols(ref List<RealSymbol> realSymbols)
+        public static List<RealSymbol> UniteRealSymbols(List<RealSymbol> _realSymbols)
         {
+            List<RealSymbol> realSymbols = new List<RealSymbol>(_realSymbols);
+            List<RealSymbol> done = new List<RealSymbol>();
             realSymbols.Reverse();
             //достройка i,j,=,: 
             for (int i = realSymbols.Count - 1; i >= 0; --i)
             {
+                if (done.Contains(realSymbols[i]))
+                    continue;
                 Rectangle symbolRectangle = realSymbols[i].GetRealBounds();
                 //будем искать мою часть, но искать с минимальной высостой до неё. 
                 RealSymbol myParticle = null;
                 int heightToMyParticle = int.MaxValue;
                 //цикл j для поиска particle (точки для 'i')
-                for (int j = realSymbols.Count-1; j >= 0; --j)
+                for (int j = realSymbols.Count - 1; j >= 0; --j)
                 {
                     Rectangle particleRectangle = realSymbols[j].GetRealBounds();
                     Point particleRectCenter = new Point(particleRectangle.Left + particleRectangle.Width / 2, particleRectangle.Top + particleRectangle.Height / 2);
@@ -413,56 +450,256 @@ namespace RO_Project {
                         //точка сверху над телом i или j, или же вторая палка знака '=' лежит в моих границах 
                         if (particleRectCenter.X > symbolRectangle.Left && particleRectCenter.X < symbolRectangle.Left + symbolRectangle.Width - 1 &&
                             //ищу так, чтобы моя координата по Y была ниже, чем то, что я ищу. Т.е. ищем для тела 'i' верхнюю точку, для '=' верхнюю палку и т.д.
-                            symbolRectangle.Top > particleRectangle.Top && 
+                            symbolRectangle.Top > particleRectangle.Top &&
                             heightToMyParticle > (symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1))
                         {
                             myParticle = realSymbols[j];
                             heightToMyParticle = (symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1);
-                           
+
                         }
                     }
                 }
-                if(myParticle!=null)
+                if (myParticle != null)
                 {
                     //а потом добавим её реальную биткарту к своей реальной биткарте
-                    realSymbols[i]=(RealSymbol.SumSymbols(realSymbols[i], myParticle));
+                    realSymbols[i] = (RealSymbol.SumSymbols(realSymbols[i], myParticle));
+                    done.Add(realSymbols[i]);
                     //найденную частичку удалим из списка реальных символов
                     realSymbols.Remove(myParticle);
-                    i--;
                 }
 
 
-                
+
             }
             realSymbols.Reverse();
+            return realSymbols;
         }
 
-        private static RealSymbol SumSymbols(RealSymbol bodySymbol, RealSymbol particleSymbol)
+        public static RealSymbol SumSymbols(RealSymbol bodySymbol, RealSymbol particleSymbol)
         {
             int left = Math.Min(particleSymbol.realBoundaries.Left, bodySymbol.realBoundaries.Left);
             int top = Math.Min(particleSymbol.realBoundaries.Top, bodySymbol.realBoundaries.Top);
             int width = Math.Max(particleSymbol.realBoundaries.Left + particleSymbol.realBoundaries.Width - 1, bodySymbol.realBoundaries.Left + bodySymbol.realBoundaries.Width - 1) - left + 1;
             int height = bodySymbol.realBoundaries.Top + bodySymbol.realBoundaries.Height - particleSymbol.realBoundaries.Top;
-            Bitmap result = new Bitmap(width,height);
+            Bitmap result = new Bitmap(width, height);
             Rectangle resRect = new Rectangle(left, top, width, height);
 
-            for(int i=left; i< width+left;++i)
+            for (int i = left; i < width + left; ++i)
             {
-                for(int j=top; j<height+top; ++j)
+                for (int j = top; j < height + top; ++j)
                 {
                     if (i >= particleSymbol.realBoundaries.Left && i <= particleSymbol.realBoundaries.Left + particleSymbol.realBoundaries.Width - 1 &&
-                        j >= particleSymbol.realBoundaries.Top && j  <= particleSymbol.realBoundaries.Top + particleSymbol.realBoundaries.Height - 1)
-                        result.SetPixel(i-left, j-top, particleSymbol.bitMap.GetPixel(i- particleSymbol.realBoundaries.Left, j - particleSymbol.realBoundaries.Top));
+                        j >= particleSymbol.realBoundaries.Top && j <= particleSymbol.realBoundaries.Top + particleSymbol.realBoundaries.Height - 1)
+                        result.SetPixel(i - left, j - top, particleSymbol.realBitMap.GetPixel(i - particleSymbol.realBoundaries.Left, j - particleSymbol.realBoundaries.Top));
                     else if (i >= bodySymbol.realBoundaries.Left && i <= bodySymbol.realBoundaries.Left + bodySymbol.realBoundaries.Width - 1 &&
                         j >= bodySymbol.realBoundaries.Top && j <= bodySymbol.realBoundaries.Top + bodySymbol.realBoundaries.Height - 1)
-                        result.SetPixel(i - left, j - top, bodySymbol.bitMap.GetPixel(i - bodySymbol.realBoundaries.Left, j - bodySymbol.realBoundaries.Top));
+                        result.SetPixel(i - left, j - top, bodySymbol.realBitMap.GetPixel(i - bodySymbol.realBoundaries.Left, j - bodySymbol.realBoundaries.Top));
                     else
                     {
-                        result.SetPixel(i - left, j - top, Color.FromArgb(255,255,255));
+                        result.SetPixel(i - left, j - top, Color.FromArgb(255, 255, 255));
                     }
                 }
             }
-            return new RealSymbol(resRect,result);
+            return new RealSymbol(resRect, result);
         }
+
+        private static bool isWhiteColor(Color currColor)
+        {
+            return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
+        }
+
+        public static List<RealSymbol> GetRealSymbols(Bitmap imageBitMap)
+        {
+            List<RealSymbol> realSymbols = new List<RealSymbol>();
+            for (int i = 0; i < imageBitMap.Width; ++i)
+            {
+                for (int j = 0; j < imageBitMap.Height; ++j)
+                {
+                    Point pixel = new Point(i, j);
+                    if (!isWhiteColor(imageBitMap.GetPixel(i, j)) && !IsPixelBelongsToSymbol(realSymbols, pixel))
+                    {
+                        RealSymbol realSymbol = new RealSymbol(pixel, imageBitMap);
+                        realSymbols.Add(realSymbol);
+                    }
+                }
+            }
+            return realSymbols;
+        }
+    }
+
+    public class PrimalSymbol
+    {
+        private string meaning;
+        private Rectangle primalSymbolBoundaries;
+        private Bitmap primalSymbolBitmap;
+        private List<PrimalSymbol> primalSymbols;
+        List<RealSymbol> realInSymbols;
+
+        public PrimalSymbol(RealSymbol _realSymbol, string _meaning)
+        {
+            primalSymbolBoundaries = _realSymbol.GetRealBounds();
+            primalSymbolBitmap = _realSymbol.GetRealBitMap();
+            realInSymbols = new List<RealSymbol>() { _realSymbol };
+            meaning = _meaning;
+        }
+
+        public PrimalSymbol(List<RealSymbol> _realSymbols)
+        {
+            RealSymbol _realSymbol = _realSymbols[0];
+            for(int i=1; i<_realSymbols.Count; ++i)
+            {
+                _realSymbol = RealSymbol.SumSymbols(_realSymbol, _realSymbols[i]);
+            }
+            primalSymbolBoundaries = _realSymbol.GetRealBounds();
+            primalSymbolBitmap = _realSymbol.GetRealBitMap();
+            realInSymbols = RealSymbol.GetRealSymbols(primalSymbolBitmap);
+            meaning = "";
+        }
+
+        private PrimalSymbol(Bitmap _primalSymbolBitmap, Rectangle _primalSymbolBoundaries)
+        {
+            primalSymbolBoundaries = _primalSymbolBoundaries;
+            primalSymbolBitmap = _primalSymbolBitmap;
+            realInSymbols = RealSymbol.GetRealSymbols(primalSymbolBitmap);
+            meaning = "";
+        }
+
+        public void PrintRealBitMap()
+        {
+            for (int i = 0; i < primalSymbolBitmap.Height; i++)
+            {
+                for (int j = 0; j < primalSymbolBitmap.Width; j++)
+                    Console.Write((isWhiteColor(primalSymbolBitmap.GetPixel(j, i)) ? 0 : 1).ToString() + " ");
+                Console.WriteLine();
+            }
+        }
+
+        public void SetMeaning(string _meaning)
+        {
+            meaning = _meaning;
+        }
+
+        public string GetMeaning()
+        {
+            return meaning;
+        }
+
+        public Rectangle GetRealBoundaries()
+        {
+            return primalSymbolBoundaries;
+        }
+
+        public List<RealSymbol> GetRealSymbols()
+        {
+            return new List<RealSymbol>(realInSymbols);
+        }
+
+        private static bool isWhiteColor(Color currColor)
+        {
+            return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
+        }
+
+        private static List<Rectangle> GetSymbolsBoundaries(Bitmap imageBitmap)
+        {
+            List<Rectangle> symbolsBoundaries = new List<Rectangle>();
+
+            int N = imageBitmap.Width;
+            int M = imageBitmap.Height;
+
+            //первый разделитель в промежтуке
+            bool previousOnlyWhite = false;
+            int Left = -1, Right = -1, Top = -1, Bottom = -1, Counter = 0;
+            for (int i = 0; i < N; ++i)
+            {
+
+                bool currentOnlyWhite = true;
+                for (int j = 0; j < M; ++j)
+                {
+                    currentOnlyWhite &= isWhiteColor(imageBitmap.GetPixel(i, j));
+                }
+
+                //если есть чёрный символ в этой вертикальной линии i
+                if (currentOnlyWhite == false)
+                {
+
+                    if (i == 0)
+                    {
+                        Counter += 1;
+                        Left = i;
+                    }
+                    else if (i == N - 1)
+                    {
+                        Counter += 1;
+                        Right = i;
+                    }
+                    //переход с белого на чёрный
+                    else if (previousOnlyWhite == true)
+                    {
+                        Counter += 1;
+                        Left = i;
+                    }
+                }
+
+                else
+                {
+                    //переход с чёрного на белый
+                    if (previousOnlyWhite == false && i != 0)
+                    {
+                        Counter += 1;
+                        Right = i - 1;
+                    }
+                }
+                previousOnlyWhite = currentOnlyWhite;
+                if (Counter == 2)
+                {
+                    Top = M;
+                    Bottom = -1;
+                    for (int k = Left; k <= Right; ++k)
+                    {
+                        for (int l = 0; l < M; ++l)
+                        {
+                            if (!isWhiteColor(imageBitmap.GetPixel(k, l)))
+                            {
+                                if (Top > l)
+                                    Top = l;
+                                if (Bottom < l)
+                                    Bottom = l;
+                            }
+                        }
+                    }
+                    Counter = 0;
+                    symbolsBoundaries.Add(new Rectangle(Left, Top, Right - Left + 1, Bottom - Top + 1));
+                }
+            }
+            return symbolsBoundaries;
+        }
+
+        private static Bitmap GetImagePart(Bitmap imageBitmap, Rectangle rect)
+        {
+            int N = rect.Width;
+            int M = rect.Height;
+
+            Console.WriteLine("Создается биткарта размерами " + N + " x " + M);
+
+            Bitmap partBitmap = new Bitmap(N + 1, M + 1);
+
+            for (int i = rect.Left; i <= rect.Right; i++)
+                for (int j = rect.Top; j <= rect.Bottom; j++)
+                    partBitmap.SetPixel(i - rect.Left, j - rect.Top, imageBitmap.GetPixel(i, j));
+
+            return partBitmap;
+        }
+
+        public static List<PrimalSymbol> GetPrimalSymbols(Bitmap imageBitmap)
+        {
+            List<PrimalSymbol> result = new List<PrimalSymbol>();
+            List<Rectangle> rects = GetSymbolsBoundaries(imageBitmap);
+            foreach (var rect in rects)
+            {
+                result.Add(new PrimalSymbol(GetImagePart(imageBitmap, rect), rect));
+            }
+            return result;
+        }
+        
     }
 }
