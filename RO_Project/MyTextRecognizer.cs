@@ -35,11 +35,111 @@ namespace RO_Project {
             recognitionResult = "";
         }
 
+        private bool ExtraSymbolChecker(RealSymbol realSymbol)
+        {
+            string meaning = realSymbol.GetMeaning();
+            return (meaning == "summator" || meaning == "integral");
+        }
+        private void UniteWithExtraSymbol(ref List<RealSymbol> _realSymbols)
+        {
+            List<RealSymbol> extraSymbols = new List<RealSymbol>();
+            List<RealSymbol> preparedSymbols = new List<RealSymbol>();
+            for (int i = _realSymbols.Count - 1; i >= 0; --i)
+            {
+                _realSymbols[i].SetMeaning(RecognizeSymbol(_realSymbols[i]));
+                if (ExtraSymbolChecker(_realSymbols[i]))
+                {
+                    extraSymbols.Add(_realSymbols[i]);
+                    _realSymbols.RemoveAt(i);
+                }
+            }
+            _realSymbols.Reverse();
+            Dictionary<int, List<RealSymbol>> extrSymbolDictionary = new Dictionary<int, List<RealSymbol>>();
+            for(int i=0; i< extraSymbols.Count; ++i)
+            {
+                extrSymbolDictionary.Add(i, new List<RealSymbol>());
+            }
+            for (int i = _realSymbols.Count - 1; i >= 0; --i)
+            {
+                Rectangle particleBounds = _realSymbols[i].GetRealBounds();
+                int myFatherSymbolIndex = -1;
+                double minDistance = double.MaxValue;
+                for (int j = extraSymbols.Count - 1; j >= 0; --j)
+                {
+                    Rectangle extraSymbolBounds = extraSymbols[j].GetRealBounds();
+                    //что-то над сумматором или под ним
+                    if (particleBounds.Bottom < extraSymbolBounds.Top && particleBounds.Top < extraSymbolBounds.Top || particleBounds.Top > extraSymbolBounds.Bottom && particleBounds.Bottom > extraSymbolBounds.Bottom)
+                    {
+                        double distnace = Math.Sqrt(Math.Pow((extraSymbolBounds.Top - particleBounds.Top), 2) + Math.Pow((extraSymbolBounds.Left - particleBounds.Left), 2));
+                        if (distnace < minDistance)
+                        {
+                            minDistance = distnace;
+                            myFatherSymbolIndex = j;
+                        }
+                    }
+                }
+
+                if (myFatherSymbolIndex != -1)
+                {
+                    extrSymbolDictionary[myFatherSymbolIndex].Add(_realSymbols[i]);
+                    _realSymbols.RemoveAt(i);
+                }
+            }
+            for(int i=0; i<extraSymbols.Count; ++i)
+            {
+                foreach (var realSymbol in extrSymbolDictionary[i] )
+                {
+                    extraSymbols[i] = RealSymbol.SumSymbols(extraSymbols[i], realSymbol);
+                }
+                
+            }
+            //объединяем всё, что осталось с тем, что относилось к сумматору
+            _realSymbols.AddRange(extraSymbols);
+        }
+
+        private void UniteWithInetrsectingSymbol (ref List<RealSymbol> _realSymbols)
+        {
+            for (int i = _realSymbols.Count - 1; i >= 0; --i)
+            {
+                List<int> intersectingIndexes = new List<int>();
+                double minDistance = double.MaxValue;
+                for (int j = _realSymbols.Count - 1; j >= 0; --j)
+                {
+                    if(i!=j)
+                    {
+                        Rectangle second = _realSymbols[j].GetRealBounds();
+                        //что-то над сумматором или под ним
+                        if (_realSymbols[i].GetRealBounds().Left < second.Right && _realSymbols[i].GetRealBounds().Left > second.Left ||
+                            _realSymbols[i].GetRealBounds().Right < second.Right && _realSymbols[i].GetRealBounds().Right > second.Left)
+                        {
+                            _realSymbols[i] = RealSymbol.SumSymbols(_realSymbols[i], _realSymbols[j]);
+                            _realSymbols.RemoveAt(j);
+                        }
+                    }
+                  
+                }
+            }
+        }
+
         public void Start(Bitmap imageBitmap)
         {
             ReadEtalons(etalonArraysTxtPath);
             ReadRules(rulesDirectoryPath);
-            List<PrimalSymbol> primalSymbols = PrimalSymbol.GetPrimalSymbols(imageBitmap);
+            List<RealSymbol> realSymbols = RealSymbol.GetRealSymbols(imageBitmap);
+            foreach(var realSymbol in realSymbols)
+            {
+                realSymbol.SetMeaning(RecognizeSymbol(realSymbol));
+            }
+            UniteWithExtraSymbol(ref realSymbols);
+            UniteWithInetrsectingSymbol(ref realSymbols);
+
+            List<PrimalSymbol> primalSymbols = new List<PrimalSymbol>();
+            foreach (var realSymbol in realSymbols)
+            {
+                primalSymbols.Add(new PrimalSymbol(realSymbol));
+            }
+            primalSymbols.Sort(new LeftPrimalSymbolComparer<PrimalSymbol>());
+
             Console.WriteLine("Символы: ======================");
             foreach(var primalSymbol in primalSymbols)
             {
@@ -72,7 +172,6 @@ namespace RO_Project {
                 {
                     double[,] array = MyArraySerializer.DeserializeDoubleArray(ResizeWidth, ResizeHeight, new StreamReader(filePath));
                     etalonSymbols.Add(new EtalonSymbol(array, Path.GetFileName(filePath).Replace(".txt", "")));
-                    Console.WriteLine(filePath);
                 }
             }
         }
@@ -93,7 +192,6 @@ namespace RO_Project {
                             rules.Add(trigonomRule);
                             break;
                     }
-                    Console.WriteLine("rule: " + filePath);
                 }
             }
             rules.Add(new IndexRule());
@@ -230,7 +328,7 @@ namespace RO_Project {
 
         private void SortPrimalSymbols(ref List<PrimalSymbol> listToSort, Rectangle primalSymbolRectangle)
         {
-            PrimalSymbolComparer<PrimalSymbol> primalSymbolComparer = new PrimalSymbolComparer<PrimalSymbol>(primalSymbolRectangle);
+            LeftPrimalSymbolComparer<PrimalSymbol> primalSymbolComparer = new LeftPrimalSymbolComparer<PrimalSymbol>();
             listToSort.Sort(primalSymbolComparer);
         }
         //получить всевозможные символы внутри символа
@@ -314,9 +412,8 @@ namespace RO_Project {
                         if (i != j)
                         {
                             //точка сверху над телом i или j, или же вторая палка знака '=' лежит в моих границах 
-                            if ((particleRectangle.Left > symbolRectangle.Left && particleRectangle.Left < symbolRectangle.Right ||
-                                particleRectangle.Right > symbolRectangle.Left && particleRectangle.Right < symbolRectangle.Right) &&
-                                symbolRectangle.Top > particleRectangle.Top &&
+                            if ((particleRectangle.Left >= symbolRectangle.Left && particleRectangle.Left <= symbolRectangle.Right ||
+                                particleRectangle.Right >= symbolRectangle.Left && particleRectangle.Right <= symbolRectangle.Right) &&
                                 heightToMyParticle > (symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1))
                             {
                                 bool found = false;
@@ -369,24 +466,73 @@ namespace RO_Project {
 
             List<RealSymbol> realSymbols = new List<RealSymbol>(primalSymbol.GetRealSymbols());
 
+            RealSymbol extrsSymbol = null;
             //присваиваем всем символам внутри "символа" метки
             foreach (var realSymbol in realSymbols)
             {
                 realSymbol.SetMeaning(RecognizeSymbol(realSymbol));
+                if (ExtraSymbolChecker(realSymbol))
+                {
+                    extrsSymbol = realSymbol;
+                }
             }
+            realSymbols.Remove(extrsSymbol);
 
-            if (primalSymbol.GetRealSymbols().Count > 1) {
-                List<PrimalSymbol> myInnerSymbols = ProcessAndUniteTwoParticles(primalSymbol);
-                recognitionResult += RuleChecking(myInnerSymbols);
-            }
-            else if (primalSymbol.GetRealSymbols().Count == 1)
+            if (extrsSymbol==null)
             {
-                recognitionResult += primalSymbol.GetRealSymbols()[0].GetMeaning();
+                if (primalSymbol.GetRealSymbols().Count > 1)
+                {
+                    List<PrimalSymbol> myInnerSymbols = ProcessAndUniteTwoParticles(primalSymbol);
+                    recognitionResult += RuleChecking(myInnerSymbols);
+                }
+                else if (primalSymbol.GetRealSymbols().Count == 1)
+                {
+                    recognitionResult += primalSymbol.GetRealSymbols()[0].GetMeaning();
+                }
+                else if (primalSymbol.GetRealSymbols().Count == 0)
+                {
+                    recognitionResult += "ERROR ";
+                }
             }
-            else if (primalSymbol.GetRealSymbols().Count == 0)
+            else
             {
-                recognitionResult += "ERROR ";
+                List<RealSymbol> Up = new List<RealSymbol>();
+                List<RealSymbol> Down = new List<RealSymbol>();
+                foreach(var symbol in realSymbols)
+                {
+                    if(symbol.GetRealBounds().Bottom<extrsSymbol.GetRealBounds().Top)
+                    {
+                        Up.Add(symbol);
+                    }
+                    else
+                    {
+                        Down.Add(symbol);
+                    }
+                }
+                if (Up.Count == 0 || Down.Count == 0)
+                    return "нераспознаваемый сумматор, нет либо верхней, либо нижней границы";
+                RealSymbol upRes = Up[0];
+                for (int i = 1; i < Up.Count; ++i)
+                {
+                    upRes = RealSymbol.SumSymbols(upRes, Up[i]);
+                }
+                RealSymbol downRes = Down[0];
+                for (int i = 1; i < Down.Count; ++i)
+                {
+                    downRes = RealSymbol.SumSymbols(downRes, Down[i]);
+                }
+                switch(extrsSymbol.GetMeaning())
+                {
+                    case "summator":
+                        recognitionResult = "сумма с " + Recognize(new PrimalSymbol(downRes)) + " по " + Recognize(new PrimalSymbol(upRes)) + " для ";
+                        break;
+                    case "integral":
+                        recognitionResult = "интеграл в интервале с " + Recognize(new PrimalSymbol(downRes)) + " да " + Recognize(new PrimalSymbol(upRes));
+                        break;
+                }
+                
             }
+            
 
             return recognitionResult;
         }

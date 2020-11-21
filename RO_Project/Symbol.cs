@@ -55,6 +55,24 @@ namespace RO_Project {
         }
     }
 
+    public class LeftPrimalSymbolComparer<T> : IComparer<T>
+      where T : PrimalSymbol
+    {
+        private int y_center;
+        public int Compare(T x, T y)
+        {
+            PrimalSymbol x_symbol = x as PrimalSymbol;
+            PrimalSymbol y_symbol = y as PrimalSymbol;
+
+            if (x_symbol.GetRealBoundaries().Left > y_symbol.GetRealBoundaries().Left)
+                return 1;
+            if (x_symbol.GetRealBoundaries().Left < y_symbol.GetRealBoundaries().Left)
+                return -1;
+            else return 0;
+            
+        }
+    }
+
     public static class Symbol {
 
 
@@ -479,8 +497,10 @@ namespace RO_Project {
         {
             int left = Math.Min(particleSymbol.realBoundaries.Left, bodySymbol.realBoundaries.Left);
             int top = Math.Min(particleSymbol.realBoundaries.Top, bodySymbol.realBoundaries.Top);
-            int width = Math.Max(particleSymbol.realBoundaries.Left + particleSymbol.realBoundaries.Width - 1, bodySymbol.realBoundaries.Left + bodySymbol.realBoundaries.Width - 1) - left + 1;
-            int height = bodySymbol.realBoundaries.Top + bodySymbol.realBoundaries.Height - particleSymbol.realBoundaries.Top;
+            int bottom = Math.Max(particleSymbol.realBoundaries.Bottom, bodySymbol.realBoundaries.Bottom);
+            int right = Math.Max(particleSymbol.realBoundaries.Right, bodySymbol.realBoundaries.Right);
+            int width = right - left + 1;
+            int height = bottom - top + 1;
             Bitmap result = new Bitmap(width, height);
             Rectangle resRect = new Rectangle(left, top, width, height);
 
@@ -543,13 +563,8 @@ namespace RO_Project {
             meaning = _meaning;
         }
 
-        public PrimalSymbol(List<RealSymbol> _realSymbols)
+        public PrimalSymbol(RealSymbol _realSymbol)
         {
-            RealSymbol _realSymbol = _realSymbols[0];
-            for(int i=1; i<_realSymbols.Count; ++i)
-            {
-                _realSymbol = RealSymbol.SumSymbols(_realSymbol, _realSymbols[i]);
-            }
             primalSymbolBoundaries = _realSymbol.GetRealBounds();
             primalSymbolBitmap = _realSymbol.GetRealBitMap();
             realInSymbols = RealSymbol.GetRealSymbols(primalSymbolBitmap);
@@ -690,8 +705,10 @@ namespace RO_Project {
             return partBitmap;
         }
 
+        private delegate Tuple<bool> ExtraSymbolChec(RealSymbol particleSymbol, RealSymbol symbol);
         public static List<PrimalSymbol> GetPrimalSymbols(Bitmap imageBitmap)
         {
+            
             List<PrimalSymbol> result = new List<PrimalSymbol>();
             List<Rectangle> rects = GetSymbolsBoundaries(imageBitmap);
             foreach (var rect in rects)
