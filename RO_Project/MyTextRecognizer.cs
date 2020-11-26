@@ -243,6 +243,8 @@ namespace RO_Project {
                     break;
 ;               }
             }
+            //if (ResizeWidth * ResizeHeight / 4.0 <= minDelta)
+              //  result = "";
             return result;
         }
 
