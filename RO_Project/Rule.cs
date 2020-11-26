@@ -144,30 +144,59 @@ namespace RO_Project {
                 Rectangle mainSymbolRectangle = mainSymbol.GetRealBoundaries();
                 Point rectCenter = new Point(rectangle.Left + rectangle.Width / 2, rectangle.Top + rectangle.Height / 2);
              
-                if ((mainSymbolRectangle.Top > rectCenter.Y &&
-                   symbolRectangle.Top < rectCenter.Y) || 
-                   (symbolRectangle.Top > rectCenter.Y &&
-                   mainSymbolRectangle.Top < rectCenter.Y))
+                //если это 2 индекса на одном уровне (они в любом случае сначала будут распознаны в своём, отедльном квадате)
+                if(mainSymbolRectangle.Left >= symbolRectangle.Left && mainSymbolRectangle.Left <= symbolRectangle.Right ||
+                   mainSymbolRectangle.Right >= symbolRectangle.Left && mainSymbolRectangle.Right <= symbolRectangle.Right)
                 {
-                    if(mainSymbolRectangle.Top > rectCenter.Y &&
-                       symbolRectangle.Top < rectCenter.Y
-                    )
+                    if ((mainSymbolRectangle.Top > rectCenter.Y &&
+                  symbolRectangle.Top < rectCenter.Y) ||
+                  (symbolRectangle.Top > rectCenter.Y &&
+                  mainSymbolRectangle.Top < rectCenter.Y))
                     {
-                        meaning = mainSymbol.GetMeaning() + "-ый в степени " + symbol.GetMeaning();
+                        if (mainSymbolRectangle.Top > rectCenter.Y &&
+                           symbolRectangle.Top < rectCenter.Y
+                        )
+                        {
+                            meaning = mainSymbol.GetMeaning() + "-ый в степени " + symbol.GetMeaning();
+                        }
+                        else
+                        if (symbolRectangle.Top > rectCenter.Y &&
+                           mainSymbolRectangle.Top < rectCenter.Y)
+                        {
+                            meaning = symbol.GetMeaning() + "-ый в степени " + mainSymbol.GetMeaning();
+                        }
+
+                        result = (int)Result.End;
                     }
-                    else 
-                    if(symbolRectangle.Top > rectCenter.Y &&
-                       mainSymbolRectangle.Top < rectCenter.Y)
+                    else
                     {
-                        meaning = symbol.GetMeaning() + "-ый в степени " + mainSymbol.GetMeaning();
+                        result = (int)Result.NotBelong;
                     }
-                 
-                    result = (int)Result.End;
                 }
+                //но когда мы просто идём по правилам, важно понимать, что там тоже могут быть ндексы(степени). И их над приписать
                 else
                 {
-                    result = (int)Result.NotBelong;
+                    //если первый символ должен  выше центра прямоугольника всего выражения, а второй ниже его, то это индекс 
+                    if (mainSymbolRectangle.Top < rectCenter.Y &&
+                         symbolRectangle.Top > rectCenter.Y)
+                    {
+                        meaning = mainSymbol.GetMeaning() + " " + symbol.GetMeaning() + "-ый";
+                        result = (int)Result.End;
+                    }
+                    //иначе,
+                    else 
+                    if (symbolRectangle.Bottom > rectCenter.Y &&
+                        mainSymbolRectangle.Bottom < rectCenter.Y)
+                    {
+                        meaning = mainSymbol.GetMeaning() + " в степени " + symbol.GetMeaning();
+                        result = (int)Result.End;
+                    }
+                    else
+                    {
+                        result = (int)Result.NotBelong;
+                    }
                 }
+               
 
             }
             return result;

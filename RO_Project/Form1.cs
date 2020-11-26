@@ -36,26 +36,27 @@ namespace RO_Project {
         public Form1() {
 
             InitializeComponent();
+
             Console.WriteLine("Месторасположение эталонов: " + Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "\\etalons");
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location)+"\\etalons");
+                Directory.CreateDirectory(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "\\etalons");
                 pngPath = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "\\etalons" + "\\png";
                 txtPath = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "\\etalons" + "\\txt";
                 rulesPath = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "\\rules";
                 Directory.CreateDirectory(pngPath);
                 Directory.CreateDirectory(txtPath);
                 Directory.CreateDirectory(rulesPath);
-                
+
                 imageSaver = new MyImageSaver(pngPath);
                 //инициирую объект-распознаватель. Из него потом полочу результат
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Console.WriteLine("НЕОПРЕДЕЛЕНО МЕСТОПОЛОЖЕНИЕ ЭТАЛОНОВ И ПРАВИЛ!");
                 Console.WriteLine(e.Message);
             }
-            
+
         }
 
         //выбрать из проводника изображение для распознавания
