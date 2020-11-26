@@ -109,11 +109,14 @@ namespace RO_Project {
                     {
                         Rectangle second = _realSymbols[j].GetRealBounds();
                         //что-то над сумматором или под ним
-                        if (_realSymbols[i].GetRealBounds().Left < second.Right && _realSymbols[i].GetRealBounds().Left > second.Left ||
-                            _realSymbols[i].GetRealBounds().Right < second.Right && _realSymbols[i].GetRealBounds().Right > second.Left)
+                        if (_realSymbols[i].GetRealBounds().Left <= second.Right && _realSymbols[i].GetRealBounds().Left >= second.Left ||
+                            _realSymbols[i].GetRealBounds().Right <= second.Right && _realSymbols[i].GetRealBounds().Right >= second.Left ||
+                            _realSymbols[i].GetRealBounds().Left <= second.Left && _realSymbols[i].GetRealBounds().Right >= second.Right ||
+                            _realSymbols[i].GetRealBounds().Left >= second.Left && _realSymbols[i].GetRealBounds().Right <= second.Right)
                         {
                             _realSymbols[i] = RealSymbol.SumSymbols(_realSymbols[i], _realSymbols[j]);
                             _realSymbols.RemoveAt(j);
+                            break;
                         }
                     }
                   
@@ -138,7 +141,7 @@ namespace RO_Project {
             {
                 primalSymbols.Add(new PrimalSymbol(realSymbol));
             }
-            primalSymbols.Sort(new LeftPrimalSymbolComparer<PrimalSymbol>());
+           SortPrimalSymbols(ref primalSymbols);
 
             Console.WriteLine("Символы: ======================");
             foreach(var primalSymbol in primalSymbols)
@@ -326,7 +329,7 @@ namespace RO_Project {
             return result;
         }
 
-        private void SortPrimalSymbols(ref List<PrimalSymbol> listToSort, Rectangle primalSymbolRectangle)
+        private void SortPrimalSymbols(ref List<PrimalSymbol> listToSort)
         {
             LeftPrimalSymbolComparer<PrimalSymbol> primalSymbolComparer = new LeftPrimalSymbolComparer<PrimalSymbol>();
             listToSort.Sort(primalSymbolComparer);
@@ -370,9 +373,9 @@ namespace RO_Project {
             Tuple<bool, string> equation_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
             {
                 bool boolRes =
-                symbol.GetMeaning() == "minus"
+                symbol.GetMeaning() == "strelka"
                 &&
-                particleSymbol.GetMeaning() == "minus";
+                particleSymbol.GetMeaning() == "strelka";
                 return new Tuple<bool, string>(boolRes, "equation");
             }
 
@@ -414,7 +417,7 @@ namespace RO_Project {
                             //точка сверху над телом i или j, или же вторая палка знака '=' лежит в моих границах 
                             if ((particleRectangle.Left >= symbolRectangle.Left && particleRectangle.Left <= symbolRectangle.Right ||
                                 particleRectangle.Right >= symbolRectangle.Left && particleRectangle.Right <= symbolRectangle.Right) &&
-                                heightToMyParticle > (symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1))
+                                heightToMyParticle > Math.Abs(symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1))
                             {
                                 bool found = false;
                                 for (int bRuleIndex = 0; bRuleIndex < bodyConditions.Count(); ++bRuleIndex)
@@ -428,7 +431,7 @@ namespace RO_Project {
                                 if (found)
                                 {
                                     myParticle = realSymbols[j];
-                                    heightToMyParticle = (symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1);
+                                    heightToMyParticle = Math.Abs(symbolRectangle.Top - particleRectangle.Top + particleRectangle.Height - 1);
                                 }
                             }
                         }
@@ -456,7 +459,7 @@ namespace RO_Project {
                 }
             }
           
-            SortPrimalSymbols(ref result, primalSymbol.GetRealBoundaries());
+            SortPrimalSymbols(ref result);
             return result;
         }
 
