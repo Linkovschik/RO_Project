@@ -36,7 +36,6 @@ namespace RO_Project {
         public Form1() {
 
             InitializeComponent();
-
             Console.WriteLine("Месторасположение эталонов: " + Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "\\etalons");
             try
             {
@@ -120,7 +119,10 @@ namespace RO_Project {
                            
                         }
                         Directory.CreateDirectory(txtPath + "\\" + symbolTypeDirectoryName);
-                        MyArraySerializer.SerializeDoubleArray(MyEtalonLoader.GetAverageArrayForEtalon(etalonsArrays), MyTextRecognizer.ResizeWidth, MyTextRecognizer.ResizeHeight, new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"));
+                        if (etalonsArrays.Count!=0)
+                        {
+                            MyArraySerializer.SerializeDoubleArray(MyEtalonLoader.GetAverageArrayForEtalon(etalonsArrays), MyTextRecognizer.ResizeWidth, MyTextRecognizer.ResizeHeight, new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"));
+                        }
                     }
                 }
                
@@ -149,7 +151,9 @@ namespace RO_Project {
                 int count = 0;
                 foreach (Bitmap symbol in symbols) {
 
-                    imageSaver.Save(symbol, "symbol" + count);
+                    string name = "" + DateTime.Now.Millisecond + "_" +  count;
+
+                    imageSaver.Save(symbol, "lowerLetters\\"+ name);
 
                     count += 1;
                 }

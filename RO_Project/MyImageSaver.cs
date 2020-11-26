@@ -27,7 +27,7 @@ namespace RO_Project {
         public void Save(Bitmap image, string name) {
             myEncoderParameter = new EncoderParameter(myEncoder, 75L);
             myEncoderParameters.Param[0] = myEncoderParameter;
-            image.Save(pngPath + name + ".png", myImageCodecInfo, myEncoderParameters);
+            image.Save(pngPath + "\\" + name + ".png", myImageCodecInfo, myEncoderParameters);
         }
 
         private static ImageCodecInfo GetEncoderInfo(String mimeType) {

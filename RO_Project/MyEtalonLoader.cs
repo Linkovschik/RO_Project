@@ -68,31 +68,38 @@ namespace RO_Project
         //функция для определение средней матрицы эталонных изображений одного символа(используется только для этого пока что)
         public static double[,] GetAverageArrayForEtalon(List<double[,]> arrays)
         {
-            double[,] result = new double[arrays[0].GetLength(0), arrays[0].GetLength(1)];
-
-            //записываем сумму в результат
-            foreach (var array in arrays)
+            double[,] result;
+            try
             {
+                result = new double[arrays[0].GetLength(0), arrays[0].GetLength(1)];
 
-                for (int i = 0; i < array.GetLength(0); ++i)
+                //записываем сумму в результат
+                foreach (var array in arrays)
                 {
-                    for (int j = 0; j < array.GetLength(1); ++j)
+
+                    for (int i = 0; i < array.GetLength(0); ++i)
                     {
-                        result[i, j] += array[i, j];
-                        //Console.Write(array[i, j] + " ");
+                        for (int j = 0; j < array.GetLength(1); ++j)
+                        {
+                            result[i, j] += array[i, j];
+                            //Console.Write(array[i, j] + " ");
+                        }
+                        //Console.Write("\n");
                     }
-                    //Console.Write("\n");
+
                 }
 
+                //делим на количество
+                for (int i = 0; i < result.GetLength(0); ++i)
+                    for (int j = 0; j < result.GetLength(1); ++j)
+                    {
+                        result[i, j] /= (double)arrays.Count;
+                    }
             }
-
-            //делим на количество
-            for (int i = 0; i < result.GetLength(0); ++i)
-                for (int j = 0; j < result.GetLength(1); ++j)
-                {
-                    result[i, j] /= (double)arrays.Count;
-                }
-
+            catch(Exception e)
+            {
+                result = new double[32, 32];
+            }
             return result;
         }
     }

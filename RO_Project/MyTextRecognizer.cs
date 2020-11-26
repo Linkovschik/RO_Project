@@ -11,6 +11,14 @@ using System.Threading.Tasks;
 namespace RO_Project {
     public class MyTextRecognizer {
 
+        string[] upCaseLetters = new string[]
+        {
+            "A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","X","Y","Z"
+        };
+        string[] downCaseLetters = new string[]
+        {
+            "a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","x","y","z"
+        };
         //список с матрицами(эталонами) для каждого символа
         List<EtalonSymbol> etalonSymbols;
         //список правил
@@ -215,7 +223,7 @@ namespace RO_Project {
         //распознать символ (сравнение с эталоном)
         public string RecognizeSymbol(RealSymbol symbol)
         {
-            string result = "";
+            string result = "[ERROR]";
             //минимальное отклонение от эталона
             double minDelta = int.MaxValue;
             foreach (EtalonSymbol etalonSymbol in etalonSymbols)
@@ -227,8 +235,14 @@ namespace RO_Project {
                     result = etalonSymbol.Mark;
                 }
             }
-            if (ResizeWidth * ResizeHeight / 4.0 <= minDelta)
-                result = "";
+            for(int i=0; i< upCaseLetters.Length; ++i)
+            {
+                if(result== upCaseLetters[i])
+                {
+                    result = downCaseLetters[i];
+                    break;
+;               }
+            }
             return result;
         }
 
@@ -344,7 +358,8 @@ namespace RO_Project {
                 bool boolRes =
                 (symbol.GetMeaning() == "i_body" ||
                 symbol.GetMeaning() == "I" ||
-                symbol.GetMeaning() == "l")
+                symbol.GetMeaning() == "l" ||
+                symbol.GetMeaning() == "i")
                 &&
                 particleSymbol.GetMeaning() == "dot";
                 return new Tuple<bool, string>(boolRes, "i");
@@ -355,7 +370,8 @@ namespace RO_Project {
             {
                 bool boolRes =
                 (symbol.GetMeaning() == "j_body" ||
-                symbol.GetMeaning() == "J")
+                symbol.GetMeaning() == "J" ||
+                symbol.GetMeaning() == "j")
                 &&
                 particleSymbol.GetMeaning() == "dot";
                 return new Tuple<bool, string>(boolRes, "j");
@@ -373,9 +389,9 @@ namespace RO_Project {
             Tuple<bool, string> equation_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
             {
                 bool boolRes =
-                symbol.GetMeaning() == "strelka"
+                symbol.GetMeaning() == "minus"
                 &&
-                particleSymbol.GetMeaning() == "strelka";
+                particleSymbol.GetMeaning() == "minus";
                 return new Tuple<bool, string>(boolRes, "equation");
             }
 
