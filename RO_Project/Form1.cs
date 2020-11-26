@@ -36,6 +36,14 @@ namespace RO_Project {
         public Form1() {
 
             InitializeComponent();
+
+            imageToRecognize = null;
+
+            string str = @"C:\Users\1\Documents\GitHub\RO_Project\RO_Project\bin\Debug\etalons\png\upperLetters";
+            for (char letter = 'A'; letter <= 'Z'; ++letter) {
+                Directory.CreateDirectory(str + "\\" + letter);
+            }
+
             Console.WriteLine("Месторасположение эталонов: " + Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) + "\\etalons");
             try
             {
@@ -58,6 +66,25 @@ namespace RO_Project {
             
         }
 
+        //изображение для распознавания
+        Bitmap imageToRecognize;
+
+        //запуск распознавания
+        private void StartRecognizing(object sender, EventArgs e) {
+
+            if (imageToRecognize != null) {
+
+                MyTextRecognizer recognizer = new MyTextRecognizer(txtPath, rulesPath);
+                recognizer.ClearResult();
+                //начинаю распознавание
+                recognizer.Start(imageToRecognize);
+                //результат распознавания. Получаю из объекта-распознавателя
+                recognitionResultTextbox.Text = recognizer.GetResult();
+            }
+            else
+                recognitionResultTextbox.Text = "ДОБАВЬТЕ ИЗОБРАЖЕНИЕ ДЛЯ РАСПОЗНАВАНИЯ: ВЫБЕРИТЕ ЧЕРЕЗ ПРОВОДНИК, ЛИБО ВСТАВЬТЕ КОМАНДОЙ CTRL+V";
+        }
+
         //выбрать из проводника изображение для распознавания
         private void chooseImageFromExplorer(object sender, EventArgs e) {
 
@@ -73,15 +100,10 @@ namespace RO_Project {
                 String filePath = openFileDialog.FileName;
 
                 //считываем изображение из файла
-                System.Drawing.Bitmap image = new Bitmap(filePath);
+                imageToRecognize = new Bitmap(filePath);
 
-                MyTextRecognizer recognizer = new MyTextRecognizer(txtPath, rulesPath);
-                recognizer.ClearResult();
-                //начинаю распознавание
-                recognizer.Start(image);
-                //результат распознавания. Получаю из объекта-распознавателя
-                recognitionResultTextbox.Text = recognizer.GetResult();
-
+                pictureBox.Image = imageToRecognize;
+                pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             }
         }
 
@@ -122,7 +144,6 @@ namespace RO_Project {
                         MyArraySerializer.SerializeDoubleArray(MyEtalonLoader.GetAverageArrayForEtalon(etalonsArrays), MyTextRecognizer.ResizeWidth, MyTextRecognizer.ResizeHeight, new StreamWriter(txtPath + "\\" + symbolTypeDirectoryName + "\\" + directoryName + ".txt"));
                     }
                 }
-               
             }
         }
         
@@ -148,7 +169,7 @@ namespace RO_Project {
                 int count = 0;
                 foreach (Bitmap symbol in symbols) {
 
-                    imageSaver.Save(symbol, "symbol" + count);
+                    imageSaver.Save(symbol, "symbol" + DateTime.Now.Millisecond+count);
 
                     count += 1;
                 }
@@ -156,6 +177,22 @@ namespace RO_Project {
             
         }
 
-        
+       
+
+        private void handleKeyPress(object sender, KeyEventArgs e) {
+
+            Console.WriteLine("keypress");
+
+            if (e.Control == true && e.KeyCode == Keys.V) {
+
+                Console.WriteLine("contrlv");
+
+                if (Clipboard.ContainsImage()) {
+                    imageToRecognize = new Bitmap(Clipboard.GetImage());
+                    pictureBox.Image = imageToRecognize;
+                    pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+                }
+            }
+        }
     }
 }

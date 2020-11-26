@@ -224,8 +224,8 @@ namespace RO_Project {
                     result = etalonSymbol.Mark;
                 }
             }
-            if (ResizeWidth * ResizeHeight / 4.0 <= minDelta)
-                result = "";
+            //if (ResizeWidth * ResizeHeight / 4.0 <= minDelta)
+              //  result = "";
             return result;
         }
 
