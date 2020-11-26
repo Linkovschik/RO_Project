@@ -82,9 +82,7 @@ namespace RO_Project
                         for (int j = 0; j < array.GetLength(1); ++j)
                         {
                             result[i, j] += array[i, j];
-                            //Console.Write(array[i, j] + " ");
                         }
-                        //Console.Write("\n");
                     }
 
                 }

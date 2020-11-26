@@ -176,11 +176,9 @@ namespace RO_Project {
 
         private void handleKeyPress(object sender, KeyEventArgs e) {
 
-            Console.WriteLine("keypress");
 
             if (e.Control == true && e.KeyCode == Keys.V) {
 
-                Console.WriteLine("contrlv");
 
                 if (Clipboard.ContainsImage()) {
                     imageToRecognize = new Bitmap(Clipboard.GetImage());

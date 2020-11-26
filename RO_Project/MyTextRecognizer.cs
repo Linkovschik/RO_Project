@@ -33,6 +33,16 @@ namespace RO_Project {
         //результат распознавания
         private string recognitionResult;
 
+        //типы символов (название папок, в которых лежат эталоны)
+        public enum SymbolTypes
+        {
+            expression = 0,
+            greek = 1,
+            lowerLetters = 2,
+            upperLetters = 3,
+            math = 4
+        }
+
         //конструктор
         public MyTextRecognizer(string _etalonArraysTxtPath, string _rulesDirectoryPath) {
 
@@ -54,7 +64,7 @@ namespace RO_Project {
             List<RealSymbol> preparedSymbols = new List<RealSymbol>();
             for (int i = _realSymbols.Count - 1; i >= 0; --i)
             {
-                _realSymbols[i].SetMeaning(RecognizeSymbol(_realSymbols[i]));
+                _realSymbols[i].SetMeaning(RecognizeSymbol(_realSymbols[i]).Item1, RecognizeSymbol(_realSymbols[i]).Item2);
                 if (ExtraSymbolChecker(_realSymbols[i]))
                 {
                     extraSymbols.Add(_realSymbols[i]);
@@ -139,7 +149,7 @@ namespace RO_Project {
             List<RealSymbol> realSymbols = RealSymbol.GetRealSymbols(imageBitmap);
             foreach(var realSymbol in realSymbols)
             {
-                realSymbol.SetMeaning(RecognizeSymbol(realSymbol));
+                realSymbol.SetMeaning(RecognizeSymbol(realSymbol).Item1, RecognizeSymbol(realSymbol).Item2);
             }
             UniteWithExtraSymbol(ref realSymbols);
             UniteWithInetrsectingSymbol(ref realSymbols);
@@ -151,13 +161,11 @@ namespace RO_Project {
             }
            SortPrimalSymbols(ref primalSymbols);
 
-            Console.WriteLine("Символы: ======================");
             foreach(var primalSymbol in primalSymbols)
             {
-                primalSymbol.PrintRealBitMap();
-                primalSymbol.SetMeaning(Recognize(primalSymbol));
+                primalSymbol.SetMeaning(Recognize(primalSymbol).Item1, Recognize(primalSymbol).Item2);
             }
-            recognitionResult += RuleChecking(primalSymbols);
+            recognitionResult += RuleChecking(primalSymbols).Item1;
         }
 
         public string GetResult()
@@ -182,7 +190,7 @@ namespace RO_Project {
                 foreach (string filePath in files)
                 {
                     double[,] array = MyArraySerializer.DeserializeDoubleArray(ResizeWidth, ResizeHeight, new StreamReader(filePath));
-                    etalonSymbols.Add(new EtalonSymbol(array, Path.GetFileName(filePath).Replace(".txt", "")));
+                    etalonSymbols.Add(new EtalonSymbol(array, Path.GetFileName(filePath).Replace(".txt", ""), Path.GetFileName(directory)));
                 }
             }
         }
@@ -221,31 +229,33 @@ namespace RO_Project {
             return delta;
         }
         //распознать символ (сравнение с эталоном)
-        public string RecognizeSymbol(RealSymbol symbol)
+        public Tuple<string,string> RecognizeSymbol(RealSymbol symbol)
         {
-            string result = "[ERROR]";
             //минимальное отклонение от эталона
             double minDelta = int.MaxValue;
+            string resultItem1 = "[ERROR_MARK]";
+            string resultItem2 = "[ERROR_TYPE]";
             foreach (EtalonSymbol etalonSymbol in etalonSymbols)
             {
                 double delta = GetDelta(etalonSymbol, symbol);
                 if (delta < minDelta)
                 {
                     minDelta = delta;
-                    result = etalonSymbol.Mark;
+                    resultItem1 = etalonSymbol.Mark;
+                    resultItem2 = etalonSymbol.Type;
                 }
             }
             for(int i=0; i< upCaseLetters.Length; ++i)
             {
-                if(result== upCaseLetters[i])
+                if(resultItem1 == upCaseLetters[i])
                 {
-                    result = downCaseLetters[i];
+                    resultItem1 = downCaseLetters[i];
                     break;
 ;               }
             }
             //if (ResizeWidth * ResizeHeight / 4.0 <= minDelta)
               //  result = "";
-            return result;
+            return new Tuple<string, string>(resultItem1, resultItem2); ;
         }
 
         private static bool isWhiteColor(Color currColor)
@@ -253,9 +263,15 @@ namespace RO_Project {
             return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
         }
 
-        public string RuleChecking(List<PrimalSymbol> primalSymbols)
+        public Tuple<string,string> RuleChecking(List<PrimalSymbol> primalSymbols)
         {
             string result = "";
+            string resultType = "expression";
+            if (primalSymbols.Count==1)
+            {
+                resultType = primalSymbols[0].GetType();
+            }
+           
             //составили массив: i-ый элемент которого содержит r -номер правила, на котором остановился этот i-ый символ, изначально массив инициализирован 0-ми
             int[] indexCorrelation = new int[primalSymbols.Count];
             //активное правило - правило, которое сейчас пытается "собраться"
@@ -342,7 +358,7 @@ namespace RO_Project {
             {
                 rule.ClearStates();
             }
-            return result;
+            return new Tuple<string, string>(result, resultType);
         }
 
         private void SortPrimalSymbols(ref List<PrimalSymbol> listToSort)
@@ -351,24 +367,23 @@ namespace RO_Project {
             listToSort.Sort(primalSymbolComparer);
         }
         //получить всевозможные символы внутри символа
-        private delegate Tuple<bool, string> BodyConditions(RealSymbol particleSymbol, RealSymbol symbol);
+        private delegate Tuple<bool, string,string> BodyConditions(RealSymbol particleSymbol, RealSymbol symbol);
         public List<PrimalSymbol> ProcessAndUniteTwoParticles(PrimalSymbol primalSymbol)
         {
-            Tuple<bool, string> i_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
+            Tuple<bool, string, string> i_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
             {
 
                 bool boolRes =
                 (symbol.GetMeaning() == "i_body" ||
                 symbol.GetMeaning() == "I" ||
-                symbol.GetMeaning() == "l" ||
                 symbol.GetMeaning() == "i")
                 &&
                 particleSymbol.GetMeaning() == "dot";
-                return new Tuple<bool, string>(boolRes, "i");
+                return new Tuple<bool, string, string>(boolRes, "i", "lowerLetters");
 
             }
 
-            Tuple<bool, string> j_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
+            Tuple<bool, string, string> j_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
             {
                 bool boolRes =
                 (symbol.GetMeaning() == "j_body" ||
@@ -376,25 +391,25 @@ namespace RO_Project {
                 symbol.GetMeaning() == "j")
                 &&
                 particleSymbol.GetMeaning() == "dot";
-                return new Tuple<bool, string>(boolRes, "j");
+                return new Tuple<bool, string, string>(boolRes, "j", "lowerLetters");
             }
 
-            Tuple<bool, string> twoDot_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
+            Tuple<bool, string, string> twoDot_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
             {
                 bool boolRes =
                 symbol.GetMeaning() == "dot"
                 &&
                 particleSymbol.GetMeaning() == "dot";
-                return new Tuple<bool, string>(boolRes, "twoDot");
+                return new Tuple<bool, string, string>(boolRes, "twoDot", "math");
             }
 
-            Tuple<bool, string> equation_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
+            Tuple<bool, string, string> equation_BodyCondition(RealSymbol particleSymbol, RealSymbol symbol)
             {
                 bool boolRes =
                 symbol.GetMeaning() == "minus"
                 &&
                 particleSymbol.GetMeaning() == "minus";
-                return new Tuple<bool, string>(boolRes, "equation");
+                return new Tuple<bool, string, string>(boolRes, "equation", "math");
             }
 
             BodyConditions[] bodyConditions = new BodyConditions[4];
@@ -423,6 +438,7 @@ namespace RO_Project {
                     RealSymbol bodyParticle = realSymbols[i];
 
                     string newMeaning = "";
+                    string newType = "";
                     int heightToMyParticle = int.MaxValue;
 
                     //цикл j для поиска particle (точки для 'i')
@@ -440,10 +456,14 @@ namespace RO_Project {
                                 bool found = false;
                                 for (int bRuleIndex = 0; bRuleIndex < bodyConditions.Count(); ++bRuleIndex)
                                 {
-                                    Tuple<bool, string> res = bodyConditions[bRuleIndex](realSymbols[j], realSymbols[i]);
+                                    Tuple<bool, string, string> res = bodyConditions[bRuleIndex](realSymbols[j], realSymbols[i]);
                                     found |= res.Item1;
                                     if (res.Item1)
+                                    {
                                         newMeaning = res.Item2;
+                                        newType = res.Item3;
+                                    }
+                                        
                                 }
 
                                 if (found)
@@ -459,7 +479,7 @@ namespace RO_Project {
                     if (myParticle != null)
                     {
                        
-                        result.Add(new PrimalSymbol(RealSymbol.SumSymbols(bodyParticle, myParticle), newMeaning));
+                        result.Add(new PrimalSymbol(RealSymbol.SumSymbols(bodyParticle, myParticle), newMeaning, newType));
                         //найденную частичку и своё тело удалим из списка реальных символов
                         realSymbols.Remove(bodyParticle);
                         realSymbols.Remove(myParticle);
@@ -469,7 +489,7 @@ namespace RO_Project {
                     }
                     else
                     {
-                        result.Add(new PrimalSymbol(bodyParticle, bodyParticle.GetMeaning()));
+                        result.Add(new PrimalSymbol(bodyParticle, bodyParticle.GetMeaning(), bodyParticle.GetType()));
                         realSymbols.Remove(bodyParticle);
                         doneCounter -= 1;
                     }
@@ -481,9 +501,11 @@ namespace RO_Project {
             return result;
         }
 
-        public string Recognize(PrimalSymbol primalSymbol)
+
+        public Tuple<string,string> Recognize(PrimalSymbol primalSymbol)
         {
             string recognitionResult = "";
+            string typeResult = "expression";
 
             List<RealSymbol> realSymbols = new List<RealSymbol>(primalSymbol.GetRealSymbols());
 
@@ -491,7 +513,7 @@ namespace RO_Project {
             //присваиваем всем символам внутри "символа" метки
             foreach (var realSymbol in realSymbols)
             {
-                realSymbol.SetMeaning(RecognizeSymbol(realSymbol));
+                realSymbol.SetMeaning(RecognizeSymbol(realSymbol).Item1, RecognizeSymbol(realSymbol).Item2);
                 if (ExtraSymbolChecker(realSymbol))
                 {
                     extrsSymbol = realSymbol;
@@ -504,15 +526,19 @@ namespace RO_Project {
                 if (primalSymbol.GetRealSymbols().Count > 1)
                 {
                     List<PrimalSymbol> myInnerSymbols = ProcessAndUniteTwoParticles(primalSymbol);
-                    recognitionResult += RuleChecking(myInnerSymbols);
+                    Tuple<string, string> res = RuleChecking(myInnerSymbols);
+                    recognitionResult += res.Item1;
+                    typeResult = res.Item2;
                 }
                 else if (primalSymbol.GetRealSymbols().Count == 1)
                 {
                     recognitionResult += primalSymbol.GetRealSymbols()[0].GetMeaning();
+                    typeResult = primalSymbol.GetRealSymbols()[0].GetType();
                 }
                 else if (primalSymbol.GetRealSymbols().Count == 0)
                 {
-                    recognitionResult += "ERROR ";
+                    recognitionResult += "ERROR_MEANING";
+                    typeResult = "ERROR_TYPE";
                 }
             }
             else
@@ -531,7 +557,10 @@ namespace RO_Project {
                     }
                 }
                 if (Up.Count == 0 || Down.Count == 0)
-                    return "нераспознаваемый сумматор, нет либо верхней, либо нижней границы";
+                {
+                    recognitionResult = "нераспознаваемый сумматор, нет либо верхней, либо нижней границы";
+                    return new Tuple<string, string>(recognitionResult,typeResult);
+                }
                 RealSymbol upRes = Up[0];
                 for (int i = 1; i < Up.Count; ++i)
                 {
@@ -545,17 +574,17 @@ namespace RO_Project {
                 switch(extrsSymbol.GetMeaning())
                 {
                     case "summator":
-                        recognitionResult = "сумма с " + Recognize(new PrimalSymbol(downRes)) + " по " + Recognize(new PrimalSymbol(upRes)) + " для ";
+                        recognitionResult = "сумма с " + Recognize(new PrimalSymbol(downRes)).Item1 + " по " + Recognize(new PrimalSymbol(upRes)).Item1 + " для ";
                         break;
                     case "integral":
-                        recognitionResult = "интеграл в интервале с " + Recognize(new PrimalSymbol(downRes)) + " да " + Recognize(new PrimalSymbol(upRes));
+                        recognitionResult = "интеграл в интервале с " + Recognize(new PrimalSymbol(downRes)).Item1 + " до " + Recognize(new PrimalSymbol(upRes)).Item1;
                         break;
                 }
                 
             }
-            
 
-            return recognitionResult;
+
+            return new Tuple<string, string>(recognitionResult, typeResult);
         }
     }
 }

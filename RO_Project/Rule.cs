@@ -123,6 +123,11 @@ namespace RO_Project {
 
         public override int Update(PrimalSymbol symbol)
         {
+            //все математические символы не могут быть индексами
+            if(symbol.GetType() == "math")
+            {
+                return (int)Result.NotBelong;
+            }
             Rectangle symbolRectangle = symbol.GetRealBoundaries();
             int result = -1;
             if (currentState == 0)
@@ -148,20 +153,21 @@ namespace RO_Project {
                 if(mainSymbolRectangle.Left >= symbolRectangle.Left && mainSymbolRectangle.Left <= symbolRectangle.Right ||
                    mainSymbolRectangle.Right >= symbolRectangle.Left && mainSymbolRectangle.Right <= symbolRectangle.Right)
                 {
-                    if ((mainSymbolRectangle.Top > rectCenter.Y &&
-                  symbolRectangle.Top < rectCenter.Y) ||
-                  (symbolRectangle.Top > rectCenter.Y &&
-                  mainSymbolRectangle.Top < rectCenter.Y))
+                    if (mainSymbolRectangle.Top > symbolRectangle.Top &&
+                        mainSymbolRectangle.Top > symbolRectangle.Bottom &&
+                        mainSymbolRectangle.Top > symbolRectangle.Top &&
+                        mainSymbolRectangle.Top > symbolRectangle.Bottom ||
+                        symbolRectangle.Top > mainSymbolRectangle.Top &&
+                        symbolRectangle.Top > mainSymbolRectangle.Bottom &&
+                        symbolRectangle.Top > mainSymbolRectangle.Top &&
+                        symbolRectangle.Top > mainSymbolRectangle.Bottom
+                       )
                     {
-                        if (mainSymbolRectangle.Top > rectCenter.Y &&
-                           symbolRectangle.Top < rectCenter.Y
-                        )
+                        if (mainSymbolRectangle.Top > symbolRectangle.Top)
                         {
                             meaning = mainSymbol.GetMeaning() + "-ый в степени " + symbol.GetMeaning();
                         }
                         else
-                        if (symbolRectangle.Top > rectCenter.Y &&
-                           mainSymbolRectangle.Top < rectCenter.Y)
                         {
                             meaning = symbol.GetMeaning() + "-ый в степени " + mainSymbol.GetMeaning();
                         }
@@ -177,16 +183,20 @@ namespace RO_Project {
                 else
                 {
                     //если первый символ должен  выше центра прямоугольника всего выражения, а второй ниже его, то это индекс 
-                    if (mainSymbolRectangle.Top < rectCenter.Y &&
-                         symbolRectangle.Top > rectCenter.Y)
+                    if (symbolRectangle.Top < mainSymbolRectangle.Bottom &&
+                        symbolRectangle.Top > mainSymbolRectangle.Top &&
+                        symbolRectangle.Bottom > mainSymbolRectangle.Bottom)
                     {
                         meaning = mainSymbol.GetMeaning() + " " + symbol.GetMeaning() + "-ый";
                         result = (int)Result.End;
                     }
                     //иначе,
                     else 
-                    if (symbolRectangle.Bottom > rectCenter.Y &&
-                        mainSymbolRectangle.Bottom < rectCenter.Y)
+                    if (symbolRectangle.Bottom < mainSymbolRectangle.Bottom &&
+                        symbolRectangle.Bottom > mainSymbolRectangle.Top &&
+                        symbolRectangle.Bottom < mainSymbolRectangle.Bottom &&
+                        symbolRectangle.Top < mainSymbolRectangle.Top
+                        )
                     {
                         meaning = mainSymbol.GetMeaning() + " в степени " + symbol.GetMeaning();
                         result = (int)Result.End;

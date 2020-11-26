@@ -183,12 +183,14 @@ namespace RO_Project {
         //биткарта, сооьтветствующая символу
         public double[,] array;
         public string Mark { get; private set; }
+        public string Type { get; private set; }
 
-        public EtalonSymbol(double[,] _array, string _mark)
+        public EtalonSymbol(double[,] _array, string _mark, string _type)
         {
             array = new double[_array.GetLength(0), _array.GetLength(1)];
             Array.Copy(_array, array, _array.Length);
             Mark = _mark;
+            Type = _type;
         }
 
         private bool correlation(Color currColor)
@@ -196,20 +198,15 @@ namespace RO_Project {
             return (currColor.R > 215 && currColor.G > 215 && currColor.B > 215);
         }
 
-        public void SetMark(string _mark)
-        {
-            Mark = _mark;
-        }
-
-        public void Print()
-        {
-            for (int i = 0; i < array.GetLength(0); i++)
-            {
-                for (int j = 0; j < array.GetLength(1); j++)
-                    Console.Write(array[i, j] + " ");
-                Console.WriteLine();
-            }
-        }
+        //public void Print()
+        //{
+        //    for (int i = 0; i < array.GetLength(0); i++)
+        //    {
+        //        for (int j = 0; j < array.GetLength(1); j++)
+        //            Console.Write(array[i, j] + " ");
+        //        Console.WriteLine();
+        //    }
+        //}
     }
 
     public class RealSymbol
@@ -218,6 +215,7 @@ namespace RO_Project {
         private Rectangle realBoundaries;
         private string meaning;
         private byte[,] array;
+        private string type;
 
         private RealSymbol(Point pixel, Bitmap imageBitMap)
         {
@@ -226,7 +224,6 @@ namespace RO_Project {
             //потом создадим свою бит-карту для символа
             realBitMap = GetImagePart(pixel, imageBitMap, realBoundaries);
             array = Symbol.CreateByteMatrix(Symbol.BitmapResize(Symbol.MakeASquareBitmap(realBitMap), Symbol.ResizeWidth, Symbol.ResizeHeight));
-            PrintArray();
         }
 
         private RealSymbol(Rectangle _realBoundaries, Bitmap _bitMap)
@@ -241,33 +238,38 @@ namespace RO_Project {
             return array;
         }
 
-        public void SetMeaning(string _meaning)
+        public void SetMeaning(string _meaning, string _type)
         {
             meaning = _meaning;
+            type = _type;
         }
         public string GetMeaning()
         {
             return meaning;
         }
+        public string GetType()
+        {
+            return type;
+        }
 
-        public void PrintRealBitMap()
-        {
-            for (int i = 0; i < realBitMap.Height; i++)
-            {
-                for (int j = 0; j < realBitMap.Width; j++)
-                    Console.Write((isWhiteColor(realBitMap.GetPixel(j,i))?0:1).ToString() + " ");
-                Console.WriteLine();
-            }
-        }
-        public void PrintArray()
-        {
-            for (int i = 0; i < array.GetLength(0); i++)
-            {
-                for (int j = 0; j < array.GetLength(1); j++)
-                    Console.Write(array[i,j].ToString() + " ");
-                Console.WriteLine();
-            }
-        }
+        //public void PrintRealBitMap()
+        //{
+        //    for (int i = 0; i < realBitMap.Height; i++)
+        //    {
+        //        for (int j = 0; j < realBitMap.Width; j++)
+        //            Console.Write((isWhiteColor(realBitMap.GetPixel(j,i))?0:1).ToString() + " ");
+        //        Console.WriteLine();
+        //    }
+        //}
+        //public void PrintArray()
+        //{
+        //    for (int i = 0; i < array.GetLength(0); i++)
+        //    {
+        //        for (int j = 0; j < array.GetLength(1); j++)
+        //            Console.Write(array[i,j].ToString() + " ");
+        //        Console.WriteLine();
+        //    }
+        //}
 
         public Rectangle GetRealBounds()
         {
@@ -499,8 +501,8 @@ namespace RO_Project {
             int top = Math.Min(particleSymbol.realBoundaries.Top, bodySymbol.realBoundaries.Top);
             int bottom = Math.Max(particleSymbol.realBoundaries.Bottom, bodySymbol.realBoundaries.Bottom);
             int right = Math.Max(particleSymbol.realBoundaries.Right, bodySymbol.realBoundaries.Right);
-            int width = right - left + 1;
-            int height = bottom - top + 1;
+            int width = right - left;
+            int height = bottom - top;
             Bitmap result = new Bitmap(width, height);
             Rectangle resRect = new Rectangle(left, top, width, height);
 
@@ -550,12 +552,13 @@ namespace RO_Project {
     public class PrimalSymbol
     {
         private string meaning;
+        private string type;
         private Rectangle primalSymbolBoundaries;
         private Bitmap primalSymbolBitmap;
         private List<PrimalSymbol> primalSymbols;
         List<RealSymbol> realInSymbols;
 
-        public PrimalSymbol(RealSymbol _realSymbol, string _meaning)
+        public PrimalSymbol(RealSymbol _realSymbol, string _meaning, string _type)
         {
             primalSymbolBoundaries = _realSymbol.GetRealBounds();
             primalSymbolBitmap = _realSymbol.GetRealBitMap();
@@ -579,24 +582,28 @@ namespace RO_Project {
             meaning = "";
         }
 
-        public void PrintRealBitMap()
-        {
-            for (int i = 0; i < primalSymbolBitmap.Height; i++)
-            {
-                for (int j = 0; j < primalSymbolBitmap.Width; j++)
-                    Console.Write((isWhiteColor(primalSymbolBitmap.GetPixel(j, i)) ? 0 : 1).ToString() + " ");
-                Console.WriteLine();
-            }
-        }
+        //public void PrintRealBitMap()
+        //{
+        //    for (int i = 0; i < primalSymbolBitmap.Height; i++)
+        //    {
+        //        for (int j = 0; j < primalSymbolBitmap.Width; j++)
+        //            Console.Write((isWhiteColor(primalSymbolBitmap.GetPixel(j, i)) ? 0 : 1).ToString() + " ");
+        //        Console.WriteLine();
+        //    }
+        //}
 
-        public void SetMeaning(string _meaning)
+        public void SetMeaning(string _meaning, string _type)
         {
             meaning = _meaning;
+            type = _type;
         }
-
         public string GetMeaning()
         {
             return meaning;
+        }
+        public string GetType()
+        {
+            return type;
         }
 
         public Rectangle GetRealBoundaries()
