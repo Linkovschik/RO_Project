@@ -27,20 +27,23 @@
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.label1 = new System.Windows.Forms.Label();
             this.button2 = new System.Windows.Forms.Button();
-            this.recognitionResultTextbox = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
             this.button3 = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
             this.panel2 = new System.Windows.Forms.Panel();
-            this.label4 = new System.Windows.Forms.Label();
+            this.startRecognizeButton = new System.Windows.Forms.Button();
             this.pictureBox = new System.Windows.Forms.PictureBox();
+            this.label4 = new System.Windows.Forms.Label();
             this.panel3 = new System.Windows.Forms.Panel();
-            this.button4 = new System.Windows.Forms.Button();
+            this.loadingAnimation = new System.Windows.Forms.PictureBox();
+            this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
+            this.recognitionResultTextbox = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox)).BeginInit();
             this.panel3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.loadingAnimation)).BeginInit();
             this.SuspendLayout();
             // 
             // button1
@@ -87,16 +90,6 @@
             this.button2.UseVisualStyleBackColor = false;
             this.button2.Click += new System.EventHandler(this.CreateEtalonMatrix);
             // 
-            // recognitionResultTextbox
-            // 
-            this.recognitionResultTextbox.Font = new System.Drawing.Font("Microsoft YaHei", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.recognitionResultTextbox.Location = new System.Drawing.Point(3, 36);
-            this.recognitionResultTextbox.Multiline = true;
-            this.recognitionResultTextbox.Name = "recognitionResultTextbox";
-            this.recognitionResultTextbox.ReadOnly = true;
-            this.recognitionResultTextbox.Size = new System.Drawing.Size(543, 95);
-            this.recognitionResultTextbox.TabIndex = 6;
-            // 
             // label3
             // 
             this.label3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(50)))), ((int)(((byte)(62)))));
@@ -138,8 +131,9 @@
             // panel1
             // 
             this.panel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(191)))), ((int)(((byte)(189)))), ((int)(((byte)(193)))));
-            this.panel1.Controls.Add(this.label3);
+            this.panel1.Controls.Add(this.loadingAnimation);
             this.panel1.Controls.Add(this.recognitionResultTextbox);
+            this.panel1.Controls.Add(this.label3);
             this.panel1.Location = new System.Drawing.Point(12, 288);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(549, 134);
@@ -148,7 +142,7 @@
             // panel2
             // 
             this.panel2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(191)))), ((int)(((byte)(189)))), ((int)(((byte)(193)))));
-            this.panel2.Controls.Add(this.button4);
+            this.panel2.Controls.Add(this.startRecognizeButton);
             this.panel2.Controls.Add(this.pictureBox);
             this.panel2.Controls.Add(this.label4);
             this.panel2.Controls.Add(this.button1);
@@ -156,6 +150,29 @@
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(549, 270);
             this.panel2.TabIndex = 11;
+            // 
+            // startRecognizeButton
+            // 
+            this.startRecognizeButton.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(222)))), ((int)(((byte)(184)))), ((int)(((byte)(65)))));
+            this.startRecognizeButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.startRecognizeButton.Font = new System.Drawing.Font("Microsoft YaHei", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+            this.startRecognizeButton.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
+            this.startRecognizeButton.Location = new System.Drawing.Point(279, 223);
+            this.startRecognizeButton.Name = "startRecognizeButton";
+            this.startRecognizeButton.Size = new System.Drawing.Size(267, 44);
+            this.startRecognizeButton.TabIndex = 10;
+            this.startRecognizeButton.Text = "Начать";
+            this.startRecognizeButton.UseVisualStyleBackColor = false;
+            this.startRecognizeButton.Click += new System.EventHandler(this.StartRecognizing);
+            // 
+            // pictureBox
+            // 
+            this.pictureBox.BackColor = System.Drawing.Color.White;
+            this.pictureBox.Location = new System.Drawing.Point(5, 36);
+            this.pictureBox.Name = "pictureBox";
+            this.pictureBox.Size = new System.Drawing.Size(541, 181);
+            this.pictureBox.TabIndex = 9;
+            this.pictureBox.TabStop = false;
             // 
             // label4
             // 
@@ -169,15 +186,6 @@
             this.label4.Text = "Изображение для распознавания";
             this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
-            // pictureBox
-            // 
-            this.pictureBox.BackColor = System.Drawing.Color.White;
-            this.pictureBox.Location = new System.Drawing.Point(5, 36);
-            this.pictureBox.Name = "pictureBox";
-            this.pictureBox.Size = new System.Drawing.Size(541, 181);
-            this.pictureBox.TabIndex = 9;
-            this.pictureBox.TabStop = false;
-            // 
             // panel3
             // 
             this.panel3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(191)))), ((int)(((byte)(189)))), ((int)(((byte)(193)))));
@@ -190,19 +198,33 @@
             this.panel3.Size = new System.Drawing.Size(253, 410);
             this.panel3.TabIndex = 12;
             // 
-            // button4
+            // loadingAnimation
             // 
-            this.button4.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(222)))), ((int)(((byte)(184)))), ((int)(((byte)(65)))));
-            this.button4.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button4.Font = new System.Drawing.Font("Microsoft YaHei", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.button4.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.button4.Location = new System.Drawing.Point(279, 223);
-            this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(267, 44);
-            this.button4.TabIndex = 10;
-            this.button4.Text = "Начать";
-            this.button4.UseVisualStyleBackColor = false;
-            this.button4.Click += new System.EventHandler(this.StartRecognizing);
+            this.loadingAnimation.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.loadingAnimation.Image = global::RO_Project.Properties.Resources.giphy;
+            this.loadingAnimation.Location = new System.Drawing.Point(231, 36);
+            this.loadingAnimation.Name = "loadingAnimation";
+            this.loadingAnimation.Size = new System.Drawing.Size(94, 94);
+            this.loadingAnimation.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.loadingAnimation.TabIndex = 10;
+            this.loadingAnimation.TabStop = false;
+            this.loadingAnimation.Visible = false;
+            // 
+            // backgroundWorker1
+            // 
+            this.backgroundWorker1.WorkerSupportsCancellation = true;
+            this.backgroundWorker1.DoWork += new System.ComponentModel.DoWorkEventHandler(this.BackgroundWorker1_DoWork);
+            this.backgroundWorker1.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.BackgroundWorker1_RunWorkerCompleted);
+            // 
+            // recognitionResultTextbox
+            // 
+            this.recognitionResultTextbox.BackColor = System.Drawing.Color.White;
+            this.recognitionResultTextbox.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.recognitionResultTextbox.Location = new System.Drawing.Point(3, 36);
+            this.recognitionResultTextbox.Name = "recognitionResultTextbox";
+            this.recognitionResultTextbox.Size = new System.Drawing.Size(543, 94);
+            this.recognitionResultTextbox.TabIndex = 8;
+            this.recognitionResultTextbox.Click += new System.EventHandler(this.copyTextResult);
             // 
             // Form1
             // 
@@ -218,10 +240,10 @@
             this.Text = "Form1";
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.handleKeyPress);
             this.panel1.ResumeLayout(false);
-            this.panel1.PerformLayout();
             this.panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox)).EndInit();
             this.panel3.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.loadingAnimation)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -232,7 +254,6 @@
         private System.Windows.Forms.OpenFileDialog openFileDialog;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Button button2;
-        private System.Windows.Forms.TextBox recognitionResultTextbox;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button button3;
         private System.Windows.Forms.Label label2;
@@ -241,7 +262,10 @@
         private System.Windows.Forms.PictureBox pictureBox;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Panel panel3;
-        private System.Windows.Forms.Button button4;
+        private System.Windows.Forms.Button startRecognizeButton;
+        private System.Windows.Forms.PictureBox loadingAnimation;
+        private System.ComponentModel.BackgroundWorker backgroundWorker1;
+        private System.Windows.Forms.Label recognitionResultTextbox;
     }
 }
 

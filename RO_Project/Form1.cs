@@ -29,9 +29,6 @@ namespace RO_Project {
         //объект для удобного сохранения картинки в файл
         MyImageSaver imageSaver;
 
-       
-
-
         //конструктор формы
         public Form1() {
 
@@ -57,13 +54,37 @@ namespace RO_Project {
                 Console.WriteLine(e.Message);
             }
 
+            recognitionResult = "Выберите изображение и нажмите \"Начать\"";
         }
 
         //изображение для распознавания
         Bitmap imageToRecognize;
 
-        //запуск распознавания
+        //обработчик кнопки "Начать"
         private void StartRecognizing(object sender, EventArgs e) {
+
+            //если backgroundWorker не занят
+            if (backgroundWorker1.IsBusy != true) {
+
+                //показываем анимацию загрузки
+                loadingAnimation.Visible = true;
+
+                //очищаем поле с результатом
+                recognitionResultTextbox.Text = "";
+
+                //запускаем распознавание в отдельном потоке
+                backgroundWorker1.RunWorkerAsync();
+            }
+        }
+
+        //BACKGROUND WORKER
+        //=============================================================================
+
+        //результат распознавания в виде строки на русском языке
+        string recognitionResult;
+
+        //запуск распознавания в отдельном потоке
+        private void BackgroundWorker1_DoWork(object sender, DoWorkEventArgs e) {
 
             if (imageToRecognize != null) {
 
@@ -72,11 +93,22 @@ namespace RO_Project {
                 //начинаю распознавание
                 recognizer.Start(imageToRecognize);
                 //результат распознавания. Получаю из объекта-распознавателя
-                recognitionResultTextbox.Text = recognizer.GetResult();
+                recognitionResult = recognizer.GetResult();
             }
             else
-                recognitionResultTextbox.Text = "ДОБАВЬТЕ ИЗОБРАЖЕНИЕ ДЛЯ РАСПОЗНАВАНИЯ: ВЫБЕРИТЕ ЧЕРЕЗ ПРОВОДНИК, ЛИБО ВСТАВЬТЕ КОМАНДОЙ CTRL+V";
+                recognitionResult = "ДОБАВЬТЕ ИЗОБРАЖЕНИЕ ДЛЯ РАСПОЗНАВАНИЯ: ВЫБЕРИТЕ ЧЕРЕЗ ПРОВОДНИК, ЛИБО ВСТАВЬТЕ КОМАНДОЙ CTRL+V";
         }
+
+        //обработчик завершения работы потока с распознаванием
+        private void BackgroundWorker1_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e) {
+
+            //скрываем анимацию загрузки
+            loadingAnimation.Visible = false;
+
+            //выводим в textbox результирующую строку
+            recognitionResultTextbox.Text = recognitionResult;
+        }
+        //=============================================================================
 
         //выбрать из проводника изображение для распознавания
         private void chooseImageFromExplorer(object sender, EventArgs e) {
@@ -172,20 +204,25 @@ namespace RO_Project {
             
         }
 
-       
-
+        //обработчик нажатия клавиш (ctrl-v)
         private void handleKeyPress(object sender, KeyEventArgs e) {
 
 
             if (e.Control == true && e.KeyCode == Keys.V) {
 
-
+                
                 if (Clipboard.ContainsImage()) {
                     imageToRecognize = new Bitmap(Clipboard.GetImage());
                     pictureBox.Image = imageToRecognize;
                     pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
                 }
             }
+        }
+
+        //скопировать в буфер обмена результат распознавания
+        private void copyTextResult(object sender, EventArgs e) {
+
+            Clipboard.SetText(recognitionResult);
         }
     }
 }
