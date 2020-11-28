@@ -13,11 +13,11 @@ namespace RO_Project {
 
         string[] upCaseLetters = new string[]
         {
-            "A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","X","Y","Z"
+            "A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"
         };
         string[] downCaseLetters = new string[]
         {
-            "a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","x","y","z"
+            "a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"
         };
         //список с матрицами(эталонами) для каждого символа
         List<EtalonSymbol> etalonSymbols;
@@ -163,7 +163,8 @@ namespace RO_Project {
 
             foreach(var primalSymbol in primalSymbols)
             {
-                primalSymbol.SetMeaning(Recognize(primalSymbol).Item1, Recognize(primalSymbol).Item2);
+                Tuple<string,string> recognizeResult = Recognize(primalSymbol);
+                primalSymbol.SetMeaning(recognizeResult.Item1, recognizeResult.Item2);
             }
             recognitionResult += RuleChecking(primalSymbols).Item1;
         }
@@ -279,6 +280,7 @@ namespace RO_Project {
             //lastSavedSymbolIndex - индекс первого "обработанного не по правилу символа"
             int lastSavedSymbolIndex = 0;
 
+            bool succesfulRecognition = false;
             for (int currentSymbolIndex = 0; currentSymbolIndex < primalSymbols.Count; ++currentSymbolIndex)
             {
                 bool writeMyMark = true;
@@ -323,6 +325,7 @@ namespace RO_Project {
                         //если я прошёл последнее правило и ни одно не сработало, то мне надо вывести свою метку
                         //выводим метку
                         result += primalSymbols[currentSymbolIndex].GetMeaning() + ((currentSymbolIndex!= primalSymbols.Count-1)?" ":"");
+                        succesfulRecognition = true;
                     }
 
                 }
@@ -348,13 +351,23 @@ namespace RO_Project {
                         //если мы дошли до конца актиивного правила, то нужно активное правило "сбросить", а в результат добавить его интерпретацию
                         case (int)IRule.Result.End:
                             result += activeRule.GetMeaning() + ((currentSymbolIndex != primalSymbols.Count - 1) ? " " : "");
+                            succesfulRecognition = true;
                             activeRule = null;
                             break;
 
                     }
                 }
+                if(succesfulRecognition)
+                {
+                    foreach (var rule in rules)
+                    {
+                        rule.ClearStates();
+                    }
+                    succesfulRecognition = false;
+                }
             }
-            foreach(var rule in rules)
+
+            foreach (var rule in rules)
             {
                 rule.ClearStates();
             }
