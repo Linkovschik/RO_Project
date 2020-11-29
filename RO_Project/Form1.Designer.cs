@@ -31,19 +31,19 @@
             this.button3 = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.loadingAnimation = new System.Windows.Forms.PictureBox();
+            this.recognitionResultTextbox = new System.Windows.Forms.Label();
             this.panel2 = new System.Windows.Forms.Panel();
             this.startRecognizeButton = new System.Windows.Forms.Button();
             this.pictureBox = new System.Windows.Forms.PictureBox();
             this.label4 = new System.Windows.Forms.Label();
             this.panel3 = new System.Windows.Forms.Panel();
-            this.loadingAnimation = new System.Windows.Forms.PictureBox();
             this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
-            this.recognitionResultTextbox = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.loadingAnimation)).BeginInit();
             this.panel2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox)).BeginInit();
             this.panel3.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.loadingAnimation)).BeginInit();
             this.SuspendLayout();
             // 
             // button1
@@ -139,6 +139,28 @@
             this.panel1.Size = new System.Drawing.Size(549, 134);
             this.panel1.TabIndex = 10;
             // 
+            // loadingAnimation
+            // 
+            this.loadingAnimation.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.loadingAnimation.Image = global::RO_Project.Properties.Resources.giphy;
+            this.loadingAnimation.Location = new System.Drawing.Point(231, 36);
+            this.loadingAnimation.Name = "loadingAnimation";
+            this.loadingAnimation.Size = new System.Drawing.Size(94, 94);
+            this.loadingAnimation.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.loadingAnimation.TabIndex = 10;
+            this.loadingAnimation.TabStop = false;
+            this.loadingAnimation.Visible = false;
+            // 
+            // recognitionResultTextbox
+            // 
+            this.recognitionResultTextbox.BackColor = System.Drawing.Color.White;
+            this.recognitionResultTextbox.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.recognitionResultTextbox.Location = new System.Drawing.Point(3, 36);
+            this.recognitionResultTextbox.Name = "recognitionResultTextbox";
+            this.recognitionResultTextbox.Size = new System.Drawing.Size(543, 94);
+            this.recognitionResultTextbox.TabIndex = 8;
+            this.recognitionResultTextbox.Click += new System.EventHandler(this.copyTextResult);
+            // 
             // panel2
             // 
             this.panel2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(191)))), ((int)(((byte)(189)))), ((int)(((byte)(193)))));
@@ -168,9 +190,9 @@
             // pictureBox
             // 
             this.pictureBox.BackColor = System.Drawing.Color.White;
-            this.pictureBox.Location = new System.Drawing.Point(5, 36);
+            this.pictureBox.Location = new System.Drawing.Point(3, 36);
             this.pictureBox.Name = "pictureBox";
-            this.pictureBox.Size = new System.Drawing.Size(541, 181);
+            this.pictureBox.Size = new System.Drawing.Size(543, 181);
             this.pictureBox.TabIndex = 9;
             this.pictureBox.TabStop = false;
             // 
@@ -198,33 +220,11 @@
             this.panel3.Size = new System.Drawing.Size(253, 410);
             this.panel3.TabIndex = 12;
             // 
-            // loadingAnimation
-            // 
-            this.loadingAnimation.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.loadingAnimation.Image = global::RO_Project.Properties.Resources.giphy;
-            this.loadingAnimation.Location = new System.Drawing.Point(231, 36);
-            this.loadingAnimation.Name = "loadingAnimation";
-            this.loadingAnimation.Size = new System.Drawing.Size(94, 94);
-            this.loadingAnimation.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.loadingAnimation.TabIndex = 10;
-            this.loadingAnimation.TabStop = false;
-            this.loadingAnimation.Visible = false;
-            // 
             // backgroundWorker1
             // 
             this.backgroundWorker1.WorkerSupportsCancellation = true;
             this.backgroundWorker1.DoWork += new System.ComponentModel.DoWorkEventHandler(this.BackgroundWorker1_DoWork);
             this.backgroundWorker1.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.BackgroundWorker1_RunWorkerCompleted);
-            // 
-            // recognitionResultTextbox
-            // 
-            this.recognitionResultTextbox.BackColor = System.Drawing.Color.White;
-            this.recognitionResultTextbox.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.recognitionResultTextbox.Location = new System.Drawing.Point(3, 36);
-            this.recognitionResultTextbox.Name = "recognitionResultTextbox";
-            this.recognitionResultTextbox.Size = new System.Drawing.Size(543, 94);
-            this.recognitionResultTextbox.TabIndex = 8;
-            this.recognitionResultTextbox.Click += new System.EventHandler(this.copyTextResult);
             // 
             // Form1
             // 
@@ -240,10 +240,10 @@
             this.Text = "Form1";
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.handleKeyPress);
             this.panel1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.loadingAnimation)).EndInit();
             this.panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox)).EndInit();
             this.panel3.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.loadingAnimation)).EndInit();
             this.ResumeLayout(false);
 
         }

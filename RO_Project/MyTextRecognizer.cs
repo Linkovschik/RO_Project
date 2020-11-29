@@ -534,68 +534,59 @@ namespace RO_Project {
             }
             realSymbols.Remove(extrsSymbol);
 
-            if (extrsSymbol==null)
-            {
-                if (primalSymbol.GetRealSymbols().Count > 1)
-                {
+            if (extrsSymbol == null) {
+                if (primalSymbol.GetRealSymbols().Count > 1) {
                     List<PrimalSymbol> myInnerSymbols = ProcessAndUniteTwoParticles(primalSymbol);
                     Tuple<string, string> res = RuleChecking(myInnerSymbols);
                     recognitionResult += res.Item1;
                     typeResult = res.Item2;
                 }
-                else if (primalSymbol.GetRealSymbols().Count == 1)
-                {
+                else if (primalSymbol.GetRealSymbols().Count == 1) {
                     recognitionResult += primalSymbol.GetRealSymbols()[0].GetMeaning();
                     typeResult = primalSymbol.GetRealSymbols()[0].GetType();
                 }
-                else if (primalSymbol.GetRealSymbols().Count == 0)
-                {
+                else if (primalSymbol.GetRealSymbols().Count == 0) {
                     recognitionResult += "ERROR_MEANING";
                     typeResult = "ERROR_TYPE";
                 }
             }
-            else
-            {
-                List<RealSymbol> Up = new List<RealSymbol>();
-                List<RealSymbol> Down = new List<RealSymbol>();
-                foreach(var symbol in realSymbols)
-                {
-                    if(symbol.GetRealBounds().Bottom<extrsSymbol.GetRealBounds().Top)
-                    {
-                        Up.Add(symbol);
-                    }
-                    else
-                    {
-                        Down.Add(symbol);
-                    }
-                }
-                if (Up.Count == 0 || Down.Count == 0)
-                {
-                    recognitionResult = "нераспознаваемый сумматор, нет либо верхней, либо нижней границы";
-                    return new Tuple<string, string>(recognitionResult,typeResult);
-                }
-                RealSymbol upRes = Up[0];
-                for (int i = 1; i < Up.Count; ++i)
-                {
-                    upRes = RealSymbol.SumSymbols(upRes, Up[i]);
-                }
-                RealSymbol downRes = Down[0];
-                for (int i = 1; i < Down.Count; ++i)
-                {
-                    downRes = RealSymbol.SumSymbols(downRes, Down[i]);
-                }
-                switch(extrsSymbol.GetMeaning())
-                {
-                    case "summator":
-                        recognitionResult = "сумма с " + Recognize(new PrimalSymbol(downRes)).Item1 + " по " + Recognize(new PrimalSymbol(upRes)).Item1 + " для ";
-                        break;
-                    case "integral":
-                        recognitionResult = "интеграл в интервале с " + Recognize(new PrimalSymbol(downRes)).Item1 + " до " + Recognize(new PrimalSymbol(upRes)).Item1;
-                        break;
-                }
+            else {
                 
-            }
+                    List<RealSymbol> Up = new List<RealSymbol>();
+                    List<RealSymbol> Down = new List<RealSymbol>();
+                    foreach (var symbol in realSymbols) {
+                        if (symbol.GetRealBounds().Bottom < extrsSymbol.GetRealBounds().Top) {
+                            Up.Add(symbol);
+                        }
+                        else {
+                            Down.Add(symbol);
+                        }
+                    }
+                    if (Up.Count == 0 || Down.Count == 0) {
+                        recognitionResult += "нераспознаваемый сумматор, нет либо верхней, либо нижней границы";
+                        //return new Tuple<string, string>(recognitionResult,typeResult);
+                    }
+                if (Up.Count > 0 && Down.Count > 0) {
 
+                    RealSymbol upRes = Up[0];
+                    for (int i = 1; i < Up.Count; ++i) {
+                        upRes = RealSymbol.SumSymbols(upRes, Up[i]);
+                    }
+                    RealSymbol downRes = Down[0];
+                    for (int i = 1; i < Down.Count; ++i) {
+                        downRes = RealSymbol.SumSymbols(downRes, Down[i]);
+                    }
+                    switch (extrsSymbol.GetMeaning()) {
+                        case "summator":
+                            recognitionResult += "сумма с " + Recognize(new PrimalSymbol(downRes)).Item1 + " по " + Recognize(new PrimalSymbol(upRes)).Item1 + " для ";
+                            break;
+                        case "integral":
+                            recognitionResult += "интеграл в интервале с " + Recognize(new PrimalSymbol(downRes)).Item1 + " до " + Recognize(new PrimalSymbol(upRes)).Item1;
+                            break;
+                    }
+
+                }
+            }
 
             return new Tuple<string, string>(recognitionResult, typeResult);
         }

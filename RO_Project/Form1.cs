@@ -114,7 +114,7 @@ namespace RO_Project {
         private void chooseImageFromExplorer(object sender, EventArgs e) {
 
             //настроика диалога
-            openFileDialog.InitialDirectory = "c:\\";
+            //openFileDialog.InitialDirectory = "c:\\";
             openFileDialog.Filter = "png files (*.png)|*.png|All files (*.*)|*.*";
             openFileDialog.FilterIndex = 2;
             openFileDialog.RestoreDirectory = true;
@@ -129,6 +129,9 @@ namespace RO_Project {
 
                 pictureBox.Image = imageToRecognize;
                 pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+
+                //очищаем поле с результатом распознавания
+                recognitionResultTextbox.Text = "";
             }
         }
 
@@ -215,6 +218,9 @@ namespace RO_Project {
                     imageToRecognize = new Bitmap(Clipboard.GetImage());
                     pictureBox.Image = imageToRecognize;
                     pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+
+                    //очищаем поле с результатом распознавания
+                    recognitionResultTextbox.Text = "";
                 }
             }
         }
